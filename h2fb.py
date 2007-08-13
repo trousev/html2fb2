@@ -23,6 +23,7 @@ Usage: %prog [options] args
     --not-detect-annot:       Not detect annotation
     --not-detect-verses:      Not detect verses
     --not-detect-notes:       Not detect notes
+    --no-images-to-png:       Do not convert images to PNG, i.e. keep images as original types (UNSUPPORTED)
     -v,--verbose=INT:         Debug
 """
 
@@ -45,11 +46,12 @@ Chris TODO
         * TODO check pytho coding stlye/guid for open() versus file()
         * process() open() has except withou type, should have type and not ignore everything
         * convert_to_fb() out_file=file() also has except without type, should have type and not ignore everything
-    * test images properly -- these are known not to work (under Windows only?)
+    * test images properly -- these are known not to work, add support for different image types and links to images (as well as alterative text display/processing)
     * stuff before first header is book description: on/off
     * remove SGMLParser? replace with Beautiful Soup http://www.crummy.com/software/BeautifulSoup/
     * chardet suport - http://chardet.feedparser.org/
     * support of non ascii chracter (e.g. Unicode) like "...", mdash, etc. open/close quotes, check HaliReader on pocketPC (suspect missing unicode font) and import my mapping code
+    * uriparse  lib for proper URL parsing
 """
 from sgmllib import SGMLParser
 import sys
@@ -238,7 +240,7 @@ try:
             img = wx.ImageFromBitmap(img)
             of= tempfile.mktemp()
             if img.SaveFile(of,  wx.BITMAP_TYPE_PNG):
-                retv=open(of).read()
+                retv=open(of, 'rb').read()
             os.unlink(of)
         return retv
 except ImportError:
@@ -250,7 +252,7 @@ except ImportError:
             try:
                 of = tempfile.mktemp()
                 Image.open(filename).save(of,'PNG')
-                retv=open(of).read()
+                retv=open(of, 'rb').read()
                 os.unlink(of)
             except:
                 pass
@@ -327,7 +329,7 @@ class MyHTMLParser(SGMLParser):
             self.header_re = None
         if not data:
             try:
-                f = open(params['file-name'])
+                f = open(params['file-name']) ##FIXME TODO binary mode open!
             except:
                 self.msg("Get data from stdin",2)
                 f = sys.stdin
@@ -546,12 +548,12 @@ class MyHTMLParser(SGMLParser):
         for attrname, value in attrs:
             if attrname == 'src':
                 src = value
-        data = self.convert_image(src)#src.encode(self.params['sys-encoding']))
+        mime_type, data = self.convert_image(src)#src.encode(self.params['sys-encoding']))
         if data:
             self.end_paragraph()
             src=os.path.basename(src)
             self.out.append(self.tag_repr('image', [('xlink:href','#'+src)], True))
-            self.bins.append((src, data))
+            self.bins.append((mime_type, src, data))
 
     def report_unbalanced(self, tag):
         ''' Handle unbalansed close tags'''
@@ -1176,8 +1178,10 @@ class MyHTMLParser(SGMLParser):
     def make_bins(self):
         if not self.bins:
             return ''
-        return ''.join(['<binary content-type="image/jpeg" id="%s">%s</binary>' % \
-                        (x.encode(self.params['encoding-to'],'xmlcharrefreplace'),y) for x,y in self.bins])
+        #return ''.join(['<binary content-type="image/jpeg" id="%s">%s</binary>' % \
+        #(x.encode(self.params['encoding-to'],'xmlcharrefreplace'),y) for x,y in self.bins])
+        return ''.join(['<binary content-type="%s" id="%s">%s</binary>' % \
+                        (mime_type, x,y) for mime_type, x,y in self.bins])
             
             
 
@@ -1227,15 +1231,17 @@ class MyHTMLParser(SGMLParser):
                 print i.encode('koi8-r','replace')
 
     def convert_image(self, filename):
-        if not self.params['convert-images']:
-            f=open(filename)
+        mime_type='image/jpeg' ## FIXME determine type
+        if not self.params['images-to-png']:
+            f=open(filename, 'rb')
             data = f.read()
             f.close()
         else:
             data = convert2png(filename)
+            mime_type='image/png'
         if data:
             data=base64.encodestring(data)
-        return data
+        return mime_type, data
 
 def usage():
     print '''
@@ -1291,6 +1297,7 @@ def convert_to_fb(opts):
         'detect-notes'      : 1,        # Detect notes ([note here] or {note here})
         'verbose'           : 1,        # Verbose level
         'convert-images'    : 1,        # Convert images to png or no.
+        'images-to-png'    : 1,        # TEMP fix for above.... FIXME TODO Convert images to png or no.
         }
 
     params['sys-encoding'] = sys_encoding
@@ -1383,6 +1390,8 @@ def convert_to_fb(opts):
             params['detect-notes']=0
         elif opt in ('--not-convert-images',):
             params['convert-images']=0
+        elif opt in ('--no-images-to-png',):
+            params['images-to-png']=0
         elif opt in ('--not-convert-hyphen',):
             params['convert-hyphen']=0
         elif opt in ('-v','--verbose',):
