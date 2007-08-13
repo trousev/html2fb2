@@ -255,7 +255,12 @@ class MyHTMLParser(SGMLParser):
         self.msg('HTML to FictionBook converter, ver. %s\n' % version)
         self.msg("Reading data...\n")
         data=params['data']
-        self.href_re = re.compile(".*?%s#(.*)" % unicode(params['file-name'], params['sys-encoding']))
+        ##
+        ## use basename for href finding, could change regex instead?
+        #self.msg('process:'+unicode(params['file-name'], params['sys-encoding']))
+        ##self.href_re = re.compile(".*?%s#(.*)" % unicode(params['file-name'], params['sys-encoding']))
+        self.href_re = re.compile(".*?%s#(.*)" % unicode(os.path.basename(params['file-name']), params['sys-encoding']))
+        ##
         try:
             self.header_re = params['header-re'].strip() and re.compile(params['header-re'])
         except:
