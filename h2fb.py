@@ -230,6 +230,21 @@ class MyHTMLParser(SGMLParser):
         self.bins=[]                    # images (binary objects)
         self.informer=None              # informer (for out messages)
         
+    # copy from Python 2.3 SGMLParser class
+    # to fix nbsp ascii decode error
+    def handle_charref(self, name):
+        """Handle character reference, no need to override."""
+        try:
+            n = int(name)
+        except ValueError:
+            self.unknown_charref(name)
+            return
+        if not 0 <= n <= 255:
+            self.unknown_charref(name)
+            return
+        #self.handle_data(chr(n)) #Original python 2.3 line
+        self.handle_data(unichr(n))
+    
     # --- Main processing method
     def process(self, params):
         ''' Process all data '''
