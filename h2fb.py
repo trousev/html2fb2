@@ -1,5 +1,33 @@
 #!/usr/bin/python2.3
 # -*- coding: koi8-r -*- 
+
+
+"""
+HTML to FictionBook converter.
+
+Usage: %prog [options] args
+    -i, --input-file=FILENAME:          Input file name(stdin)
+    -o, --output-file=FILENAME:         Output file name(stdout)
+    -f, --encoding-from=ENCODING_NAME:  Source encoding(autodetect)
+    -t, --encoding-to=ENCODING_NAME:    Result encoding(Windows-1251)
+    -r,  --header-re=REGEX:         Regular expression for headers detection('')
+    --not-convert-quotes:     Not convert quotes
+    --not-convert-hyphen:     Not convert hyphen
+    --skip-images:            Skip messages
+    --skip-ext-links:         Skip external links
+    --allow-empty-lines:      Allow generate tags <empty-line/>
+    --not-detect-italic:      Not detect italc
+    --not-detect-headers:     Not detect sections headers
+    --not-detect-epigraphs:   Not detect epigraphs
+    --not-detect-paragraphs:  Not detect paragraphs
+    --not-detect-annot:       Not detect annotation
+    --not-detect-verses:      Not detect verses
+    --not-detect-notes:       Not detect notes
+    -v,--verbose=INT:         Debug
+"""
+
+####
+
 """
 Chris TODO
 
@@ -27,6 +55,15 @@ from sgmllib import SGMLParser
 import sys
 from types import DictType, TupleType, ListType
 import re, tempfile, os, base64, time
+
+
+try:
+    #raise ImportError
+    import optionparse
+    have_optparse = True
+except ImportError:
+    have_optparse = False
+
 
 version='0.1.0'
 
@@ -191,10 +228,10 @@ _TAGS={
 
 try:
     import wx
-    if wx.GetApp() is None:
-        _app = wx.PySimpleApp()
     _IMG_LIB='wxPython'
     def convert2png(filename):
+        if wx.GetApp() is None:
+            _app = wx.PySimpleApp()
         retv=''
         img = wx.Bitmap(filename, wx.BITMAP_TYPE_ANY)
         if img.Ok():
@@ -1258,34 +1295,53 @@ def convert_to_fb(opts):
 
     params['sys-encoding'] = sys_encoding
     params['informer'] = sys.stderr.write
-    try:
-        opts, args = getopt.getopt(opts,
-                                   "i:o:f:t:hv:r:",
-                                   ['input-file=',
-                                    'output-file=',
-                                    'encoding-from=',
-                                    'encoding-to=',
-                                    'help',
-                                    'verbose=',
-                                    'not-convert-quotes',
-                                    'header-re=',
-                                    'skip-images',
-                                    'skip-ext-links',
-                                    'allow-empty-lines',
-                                    'not-detect-italic',
-                                    'not-detect-headers',
-                                    'not-detect-epigraphs',
-                                    'not-detect-paragraphs',
-                                    'not-detect-annot',
-                                    'not-detect-verses',
-                                    'not-detect-notes',
-                                    'not-convert-images',
-                                    'not-convert-hyphen',
-                                    ]
-                                   )
-    except getopt.GetoptError:
-        usage()
-        return
+    
+    if have_optparse:
+        argv = sys.argv
+        opt, args = optionparse.parse(__doc__, argv[1:])
+        # 2 phase dictionary construction
+        opt_dict={}
+        for temp_param in dir(opt):
+            temp_value = getattr(opt, temp_param)
+            if not temp_param.startswith('_') and not callable(temp_value):
+                temp_key = temp_param.replace('_', '-') ## horrible hack! as "-" where turned into '_' in the argument processor
+                if isinstance(temp_value, unicode):
+                    temp_value=str(temp_value)
+                opt_dict[temp_key] = temp_value
+        # create opts array/list informat that it already expects
+        opts=[]
+        for temp_param in opt_dict:
+            if opt_dict[temp_param] is not None:
+                opts.append(('--'+temp_param, opt_dict[temp_param]))
+    else:
+        try:
+            opts, args = getopt.getopt(opts,
+                                       "i:o:f:t:hv:r:",
+                                       ['input-file=',
+                                        'output-file=',
+                                        'encoding-from=',
+                                        'encoding-to=',
+                                        'help',
+                                        'verbose=',
+                                        'not-convert-quotes',
+                                        'header-re=',
+                                        'skip-images',
+                                        'skip-ext-links',
+                                        'allow-empty-lines',
+                                        'not-detect-italic',
+                                        'not-detect-headers',
+                                        'not-detect-epigraphs',
+                                        'not-detect-paragraphs',
+                                        'not-detect-annot',
+                                        'not-detect-verses',
+                                        'not-detect-notes',
+                                        'not-convert-images',
+                                        'not-convert-hyphen',
+                                        ]
+                                       )
+        except getopt.GetoptError:
+            usage()
+            return
     for opt, val in opts:
         if opt in ('-i','--input-file'):
             params['file-name']=val
@@ -1331,9 +1387,11 @@ def convert_to_fb(opts):
             params['convert-hyphen']=0
         elif opt in ('-v','--verbose',):
             params['verbose']=int(val)
+                
     data=MyHTMLParser().process(params)
     out_file.write(data)
     out_file.close()
+
 
 if __name__=='__main__':
     if sys.version_info[0] < 2 or sys.version_info[1] < 3:
