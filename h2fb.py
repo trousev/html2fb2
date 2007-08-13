@@ -1,5 +1,28 @@
 #!/usr/bin/python2.3
 # -*- coding: koi8-r -*- 
+"""
+Chris TODO
+
+    * check/change encoding of source to be (7 bit) ASCII
+    * remove getopt, use: optparse, (my modified) wxoptparse or my document optparse
+    * "em dash" only handles for html name tag "&mdash;",
+        does not handle at all &#8212;
+        and unicode/xml literal &#x2014; is displayed as text of that!
+        probably due to use of SGML parser which isn't that flexible
+    * test multi document html input
+    * test href properly
+    *   href bug if --not-convert-quotes  is not issued, get ">>" in href!!
+    *   -i bug not working properly if file does not exist (uses stdin)
+    *   -o bug not working properly if file is in use, get no error/exception displayed and instead got to stdout
+        * TODO check pytho coding stlye/guid for open() versus file()
+        * process() open() has except withou type, should have type and not ignore everything
+        * convert_to_fb() out_file=file() also has except without type, should have type and not ignore everything
+    * test images properly -- these are known not to work (under Windows only?)
+    * stuff before first header is book description: on/off
+    * remove SGMLParser? replace with Beautiful Soup http://www.crummy.com/software/BeautifulSoup/
+    * chardet suport - http://chardet.feedparser.org/
+    * support of non ascii chracter (e.g. Unicode) like "...", mdash, etc. open/close quotes, check HaliReader on pocketPC (suspect missing unicode font) and import my mapping code
+"""
 from sgmllib import SGMLParser
 import sys
 from types import DictType, TupleType, ListType
