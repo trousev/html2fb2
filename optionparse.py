@@ -148,3 +148,61 @@ def parse(docstring, arglist=None, exit_on_usage_error=True):
         raise ## DEBUG
         raise ParsingError("Cannot parse the option string correctly")
     return p.parse_args(arglist)
+
+
+'''
+# Example script
+################ cut here and create a new script ################ 
+"""An example script invoking optionparse, my wrapper around optparse.
+
+  usage: %prog [options] args
+  -f, --filename=FILENAME: name of file to use
+  -b, --background_colour=INT: Background colour number
+  -p, --positional: print positional arguments
+  -1, --option1=OPTION1: print option1
+  -2, --option2=ANY OLD TEXT: print option2
+"""
+
+## Caution! be careful not to optimize out (e.g. with py2exe) the docstrings
+## i.e. set optimize=1 at most, e.g.:
+
+#~ options = {
+#~  'py2exe': { 
+#~      "optimize": 1,  ## 1 and NOT 2 because I use the __doc__ string as the usage string. 2 optimises out the doc strings
+#~      }
+#~  }
+
+
+import sys
+
+import optionparse
+
+#opt, args = optionparse.parse(__doc__)
+argv=None
+if argv is None:
+    argv = sys.argv
+opt, args = optionparse.parse(__doc__, argv[1:])
+
+if not opt and not args:
+    optionparse.exit()
+if opt.background_colour:
+    print 'opt.background_colour', opt.background_colour
+if opt.positional:
+    print 'args', args
+if opt.option1:
+    print 'opt.option1', opt.option1
+if opt.option2:
+    print 'opt.option2', opt.option2
+
+print "opt, args ", opt, args
+print 'end'
+
+opt_dict={}
+for temp_param in dir(opt):
+    if not temp_param.startswith('_') and not callable(getattr(opt, temp_param)):
+        opt_dict[temp_param] = getattr(opt, temp_param)
+    
+print "opt_dict['background_colour']", opt_dict['background_colour']
+print "opt_dict['option1']", opt_dict['option1']
+################ cut here end ################ 
+'''
