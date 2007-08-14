@@ -13,7 +13,8 @@ Usage: %prog [options] args
     -r,  --header-re=REGEX:         Regular expression for headers detection('')
     --not-convert-quotes:     Not convert quotes
     --not-convert-hyphen:     Not convert hyphen
-    --skip-images:            Skip messages
+    --skip-images:            Skip images, i.e. if specified do NOT include images. Default is to include images/pictures
+    --not-convert-images:     Do not convert images to PNG, i.e. if specified keep images as original types. By default ALL in-line images are converted to PNG format.
     --skip-ext-links:         Skip external links
     --allow-empty-lines:      Allow generate tags <empty-line/>
     --not-detect-italic:      Not detect italc
@@ -23,7 +24,6 @@ Usage: %prog [options] args
     --not-detect-annot:       Not detect annotation
     --not-detect-verses:      Not detect verses
     --not-detect-notes:       Not detect notes
-    --no-images-to-png:       Do not convert images to PNG, i.e. keep images as original types (UNSUPPORTED)
     -v,--verbose=INT:         Debug
 """
 
@@ -67,7 +67,7 @@ except ImportError:
     have_optparse = False
 
 
-version='0.1.0'
+version='0.1.1'
 
 # Module wide values
 _SENTENCE_FIN  = u'\'".!?:\xBB\u2026'   # \xBB == >>, \u2026 == ...
@@ -542,7 +542,7 @@ class MyHTMLParser(SGMLParser):
 
     def do_img(self, attrs):
         ''' Handle images '''
-        if not self.params['convert-images']:
+        if self.params['skip-images']:
             return
         src = None
         for attrname, value in attrs:
@@ -1232,7 +1232,7 @@ class MyHTMLParser(SGMLParser):
 
     def convert_image(self, filename):
         mime_type='image/jpeg' ## FIXME determine type
-        if not self.params['images-to-png']:
+        if not self.params['convert-images']:
             f=open(filename, 'rb')
             data = f.read()
             f.close()
@@ -1297,7 +1297,6 @@ def convert_to_fb(opts):
         'detect-notes'      : 1,        # Detect notes ([note here] or {note here})
         'verbose'           : 1,        # Verbose level
         'convert-images'    : 1,        # Convert images to png or no.
-        'images-to-png'    : 1,        # TEMP fix for above.... FIXME TODO Convert images to png or no.
         }
 
     params['sys-encoding'] = sys_encoding
@@ -1390,8 +1389,6 @@ def convert_to_fb(opts):
             params['detect-notes']=0
         elif opt in ('--not-convert-images',):
             params['convert-images']=0
-        elif opt in ('--no-images-to-png',):
-            params['images-to-png']=0
         elif opt in ('--not-convert-hyphen',):
             params['convert-hyphen']=0
         elif opt in ('-v','--verbose',):
