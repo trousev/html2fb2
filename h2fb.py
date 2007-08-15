@@ -32,7 +32,17 @@ Usage: %prog [options] args
 """
 Chris TODO
 
-    * check/change encoding of source to be (7 bit) ASCII
+    * output encoding, only really works if output is the same as system
+      encoding. E.g. windows (command line) ascii, for most out-of-linux utf8
+      this is due to use of str types contructed on the fly in the encoding
+      specified in command line and then implict conversion from str to 
+      Unicode (joining str to Unicode type, needs explict decode)
+    * uriparse  lib for proper URL parsing
+    * images
+        * check support for links to images (as well as alterative text display/processing)
+        * handle images with url encoding, e.g. "my%20pic.jpg" versus "my pic.jpg" see url/uri above..
+        * add a check "if image not (png or jpeg) convert to PNG"? Most readers seem to only support png and jpeg
+    * check/change encoding of source to be (7 bit) ASCII, make this the default (instead if Windows-1252)
     * remove getopt, use: optparse, (my modified) wxoptparse or my document optparse
     * "em dash" only handles for html name tag "&mdash;",
         does not handle at all &#8212;
@@ -46,17 +56,17 @@ Chris TODO
         * TODO check pytho coding stlye/guid for open() versus file()
         * process() open() has except withou type, should have type and not ignore everything
         * convert_to_fb() out_file=file() also has except without type, should have type and not ignore everything
-    * test images properly -- these are known not to work, add support for different image types and links to images (as well as alterative text display/processing)
     * stuff before first header is book description: on/off
     * remove SGMLParser? replace with Beautiful Soup http://www.crummy.com/software/BeautifulSoup/
     * chardet suport - http://chardet.feedparser.org/
     * support of non ascii chracter (e.g. Unicode) like "...", mdash, etc. open/close quotes, check HaliReader on pocketPC (suspect missing unicode font) and import my mapping code
-    * uriparse  lib for proper URL parsing
 """
 from sgmllib import SGMLParser
 import sys
 from types import DictType, TupleType, ListType
 import re, tempfile, os, base64, time
+import mimetypes
+import urllib
 
 
 try:
@@ -260,6 +270,8 @@ except ImportError:
     except ImportError:
         _IMG_LIB='None'
         convert2png = None
+
+mimetypes.init()
 
 
 class MyHTMLParser(SGMLParser):
@@ -548,7 +560,8 @@ class MyHTMLParser(SGMLParser):
         for attrname, value in attrs:
             if attrname == 'src':
                 src = value
-        mime_type, data = self.convert_image(src)#src.encode(self.params['sys-encoding']))
+        temp_image_filename=urllib.unquote(src)
+        mime_type, data = self.convert_image(temp_image_filename)#src.encode(self.params['sys-encoding']))
         if data:
             self.end_paragraph()
             src=os.path.basename(src)
@@ -1231,7 +1244,8 @@ class MyHTMLParser(SGMLParser):
                 print i.encode('koi8-r','replace')
 
     def convert_image(self, filename):
-        mime_type='image/jpeg' ## FIXME determine type
+        mime_type=mimetypes.guess_type(filename)[0]
+        ## note if mime_type is None, unable to determine type....
         if not self.params['convert-images']:
             f=open(filename, 'rb')
             data = f.read()
