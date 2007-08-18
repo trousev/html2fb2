@@ -76,6 +76,27 @@ class wxOptParser(optparse.OptionParser):
         return (self.options, self.args)
         
 
+def get_file_types(option):
+    ## ideally this would have been done by the calling script, this would need new type addition
+    ## See http://docs.python.org/lib/optparse-adding-new-types.html
+    def extract_list_items(in_str):
+        """Simple routine to extract items enclosed in parens, seperated by pipe.
+        For example, (1|2|3). slightly different to CHOICE version used in optionparse
+        """
+        ## will never contain ':' and '|' is not allowed either, not is ','
+        # may NOT contain '(' or ')'
+        # allow white space? Yes so find markers
+        start_marker=in_str.find('(')+1
+        end_marker=in_str.find(')')
+        if start_marker == -1 or end_marker == -1:
+            result=None
+        else:
+            result=tuple(in_str[start_marker:end_marker].split('|'))
+        return result
+    file_specification=option.getHelp().lstrip()
+    result = extract_list_items(file_specification)
+    return result
+
 class MainWindow(wx.Frame):
     """ We simply derive a new class of Frame. """
     
@@ -206,7 +227,11 @@ class MainWindow(wx.Frame):
         ahBox.Add(avBox)
         button = wx.Button(self.panel, -1, '...', size=(30, -1))
         ahBox.Add(button, 0, flag = wx.BOTTOM | wx.ALIGN_BOTTOM, border = 4)
-        button.Bind(wx.EVT_BUTTON, self.OnClickFile)
+        
+        #button.Bind(wx.EVT_BUTTON, self.generate_OnClickFile())
+        #button.Bind(wx.EVT_BUTTON, self.generate_OnClickFile(('*.jpg','*.png','*.py')))
+        file_type_list=get_file_types(option)
+        button.Bind(wx.EVT_BUTTON, self.generate_OnClickFile(file_type_list))
         
         aVBox.Add(ahBox, 0, flag = wx.LEFT | wx.TOP, border = 0)
 
@@ -285,24 +310,39 @@ class MainWindow(wx.Frame):
     def OnTextChange(self, event):
         self.buildParams()
 
-    def OnClickFile(self, event):
-        ctrl = event.GetEventObject()
-        dlg = wx.FileDialog(
-            self, message="Choose a file", defaultDir=os.getcwd(), 
-            defaultFile="", wildcard='*.*', style=wx.OPEN | wx.CHANGE_DIR
-            )
+    def generate_OnClickFile(self, wildcard_options=None):
+        if wildcard_options is None:
+            #wildcard_options='All files (*.*)|*.*|Compiled python files (*.pyc)|*.pyc'
+            wildcard_options='All files (*.*)|*.*'
+        else:
+            # assume a tuple or list of extensions
+            temp_str_list=[]
+            for x in wildcard_options:
+                temp_str_list.append('(%s)' % x)
+                temp_str_list.append(x)
+            ## TODO Always add 'All files (*.*)|*.*' to end?
+            wildcard_options='|'.join(temp_str_list)
+        
+        # note no self reference
+        def wildcardOnClickFile(event):
+            ctrl = event.GetEventObject()
+            dlg = wx.FileDialog(
+                self, message="Choose a file", defaultDir=os.getcwd(), 
+                defaultFile="", wildcard=wildcard_options, style=wx.OPEN | wx.CHANGE_DIR
+                )
 
-        # Show the dialog and retrieve the user response. If it is the OK response, 
-        # process the data.
-        if dlg.ShowModal() == wx.ID_OK:
-            paths = dlg.GetPaths()
-    
-            ctrl = self.prevTextCtrl(event)
-            ctrl.SetValue(' '.join(paths))
+            # Show the dialog and retrieve the user response. If it is the OK response, 
+            # process the data.
+            if dlg.ShowModal() == wx.ID_OK:
+                paths = dlg.GetPaths()
+        
+                ctrl = self.prevTextCtrl(event)
+                ctrl.SetValue(' '.join(paths))
 
-        # Destroy the dialog. Don't do this until you are done with it!
-        # BAD things can happen otherwise!
-        dlg.Destroy()
+            # Destroy the dialog. Don't do this until you are done with it!
+            # BAD things can happen otherwise!
+            dlg.Destroy()
+        return wildcardOnClickFile
 
     def OnClickFolder(self, event):
         dlg = wx.DirDialog(self, "Choose a directory:", style=wx.DD_DEFAULT_STYLE|wx.DD_NEW_DIR_BUTTON)

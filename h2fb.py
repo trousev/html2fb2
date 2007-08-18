@@ -6,10 +6,10 @@
 HTML to FictionBook converter.
 
 Usage: %prog [options] args
-    -i, --input-file=FILENAME:          Input file name(stdin)
-    -o, --output-file=FILENAME:         Output file name(stdout)
-    -f, --encoding-from=ENCODING_NAME:  Source encoding(autodetect)
-    -t, --encoding-to=ENCODING_NAME:    Result encoding(Windows-1251)
+    -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.*) Input file name, defaults to stdin if omitted.
+    -o, --output-file=FILENAME: (*.fb2|*.*) Output file name, defaults to stdin if omitted.
+    -f, --encoding-from=ENCODING_NAME:  Source encoding, autodetect if omitted.
+    -t, --encoding-to=ENCODING_NAME DEFAULT=Windows-1251:    Result encoding(Windows-1251)
     -r,  --header-re=REGEX:         Regular expression for headers detection('')
     --not-convert-quotes:     Not convert quotes
     --not-convert-hyphen:     Not convert hyphen
