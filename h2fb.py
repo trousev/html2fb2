@@ -1,5 +1,5 @@
 #!/usr/bin/python2.3
-# -*- coding: koi8-r -*-
+# -*- coding: ascii -*-
 
 
 """
