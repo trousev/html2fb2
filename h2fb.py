@@ -1,5 +1,5 @@
 #!/usr/bin/python2.3
-# -*- coding: koi8-r -*- 
+# -*- coding: koi8-r -*-
 
 
 """
@@ -35,7 +35,7 @@ Chris TODO
     * output encoding, only really works if output is the same as system
       encoding. E.g. windows (command line) ascii, for most out-of-linux utf8
       this is due to use of str types contructed on the fly in the encoding
-      specified in command line and then implict conversion from str to 
+      specified in command line and then implict conversion from str to
       Unicode (joining str to Unicode type, needs explict decode)
     * uriparse  lib for proper URL parsing
     * images
@@ -64,7 +64,11 @@ Chris TODO
 from sgmllib import SGMLParser
 import sys
 from types import DictType, TupleType, ListType
-import re, tempfile, os, base64, time
+import re
+import tempfile
+import os
+import base64
+import time
 import mimetypes
 import urllib
 
@@ -106,7 +110,7 @@ _TAG_EM       = 0x0008
 _TAG_NOTSKIP  = 0x0010
 _TAG_ENDP     = 0x0020
 _TAG_STARTP   = 0x0002
-_TAG_PRE      = 0x0040 
+_TAG_PRE      = 0x0040
 _TAG_HEADER   = 0x0080
 _TAG_INP      = 0x0100
 _TAG_ID       = 0x0200
@@ -241,6 +245,7 @@ _TAGS={
 try:
     import wx
     _IMG_LIB='wxPython'
+    
     def convert2png(filename):
         if wx.GetApp() is None:
             _app = wx.PySimpleApp()
@@ -249,7 +254,7 @@ try:
         if img.Ok():
             img = wx.ImageFromBitmap(img)
             of= tempfile.mktemp()
-            if img.SaveFile(of,  wx.BITMAP_TYPE_PNG):
+            if img.SaveFile(of, wx.BITMAP_TYPE_PNG):
                 retv=open(of, 'rb').read()
             os.unlink(of)
         return retv
@@ -257,6 +262,7 @@ except ImportError:
     try:    
         from PIL import Image
         _IMG_LIB='PIL'
+        
         def convert2png(filename):
             retv = ''
             try:
@@ -285,6 +291,7 @@ class MyHTMLParser(SGMLParser):
         entitydefs[name] = unichr(codepoint)
     del name, codepoint, name2codepoint
     entitydefs['nbsp']=u' '
+    
     def reset(self):
         SGMLParser.reset(self)
         self.nofill = 1                 # PRE active or not
@@ -304,10 +311,10 @@ class MyHTMLParser(SGMLParser):
         self.bins=[]                    # images (binary objects)
         self.informer=None              # informer (for out messages)
         
-    # copy from Python 2.3 SGMLParser class
-    # to fix nbsp ascii decode error
     def handle_charref(self, name):
         """Handle character reference, no need to override."""
+        # copied from Python 2.3 SGMLParser class
+        # to fix nbsp ascii decode error
         try:
             n = int(name)
         except ValueError:
@@ -319,11 +326,10 @@ class MyHTMLParser(SGMLParser):
         #self.handle_data(chr(n)) #Original python 2.3 line
         self.handle_data(unichr(n))
     
-    # --- Main processing method
     def process(self, params):
-        ''' Process all data '''
+        '''Main processing method. Process all data '''
         self.params=params
-        if params.has_key('informer'):
+        if 'informer' in params:
             self.informer=params['informer']
         secs = time.time()
         self.msg('HTML to FictionBook converter, ver. %s\n' % version)
@@ -370,12 +376,14 @@ class MyHTMLParser(SGMLParser):
                     self.make_bins() + '</FictionBook>'
         self.msg("Total process time is %.2f secs\n" % (time.time() - secs))
         return self.out
+        
     # --- Tag handling, need for parsing
+    
     def unknown_starttag(self, tag, attrs):
         '''
         Handle unknown start ttag
         '''
-        if _TAGS.has_key(tag) or self.skip:
+        if tag in _TAGS or self.skip:
             self.handle_starttag(tag, None, attrs)
         else:
             self.handle_data(self.tag_repr(tag, attrs))
@@ -384,7 +392,7 @@ class MyHTMLParser(SGMLParser):
         '''
         Handle unknown end ttag
         '''
-        if _TAGS.has_key(tag) or self.skip:
+        if tag in _TAGS or self.skip:
             self.handle_endtag(tag, None)
         else:
             self.handle_data("</%s>" % tag)
@@ -534,6 +542,7 @@ class MyHTMLParser(SGMLParser):
                     self.ids[value][0]+=1
                 except:
                     self.ids[value]=[1,0]
+                    
     def end_a(self):
         ''' Handle tag /A '''
         self.mark_end_tag('a')
@@ -583,6 +592,7 @@ class MyHTMLParser(SGMLParser):
         self.msg('Unknown entity ref %s\n' % ref, 1)
 
     # --- Methods for support parsing
+    
     def start_saving(self):
         ''' Not out data to out but save it '''
         self.saving = True
@@ -694,6 +704,7 @@ class MyHTMLParser(SGMLParser):
         self.data = ''
         
     # --- Parsed data processing methods
+    
     def pre_process(self, data):
         '''
         Processing data before parsing.
@@ -797,8 +808,7 @@ class MyHTMLParser(SGMLParser):
                   '',                   # place for title (5)
                   '</p>',
                   '</title>',
-                  '<p>'
-                  ]
+                  '<p>']
         while i < len(data)-1:
             empty0 = not data[i]
             try:
@@ -828,7 +838,6 @@ class MyHTMLParser(SGMLParser):
                         ) or
                         data[i+1].lstrip()[0] in _HEAD_CHARS  or
                         self.is_roman_number(data[i+1])
-
                     )
                 )
                 istitle = istitle or \
@@ -875,7 +884,8 @@ class MyHTMLParser(SGMLParser):
                     eplines = 0
                     epfound = 0
                     while j < len(raw):
-                        while j < lraw and not raw[j]: j+=1 #  skip empty lines
+                        while j < lraw and not raw[j]:
+                            j+=1 #  skip empty lines
                         eep = -1
                         # search empty line
                         for k in range(j,j+60):
@@ -906,7 +916,8 @@ class MyHTMLParser(SGMLParser):
                                 if author and self.clean_str(raw[eep-1]).lstrip()[0].isupper():
                                     res.extend(['</p>','<text-author>',_CH_FLOW + self.clean_str(raw[eep-1]).lstrip(),'</text-author>'])
                                 else:
-                                    if author: res[-1].append(raw[eep-1])
+                                    if author:
+                                        res[-1].append(raw[eep-1])
                                     res.append('</p>')
                                 res.append('</epigraph>')
                                 j=eep
@@ -1001,12 +1012,14 @@ class MyHTMLParser(SGMLParser):
                 raw = self.out[i]
                 j = 0
                 pfound = 0
-                while j < len(raw) and not raw[j]: j+=1
+                while j < len(raw) and not raw[j]:
+                    j+=1
                 jstart = j
                 while j < len(raw):
                     if not raw[j]:
                         try:
-                            while not raw[j]: j+=1
+                            while not raw[j]:
+                                j+=1
                         except IndexError:
                             break
                         if not self.params['skip-empty-lines']:
@@ -1152,9 +1165,10 @@ class MyHTMLParser(SGMLParser):
         return res
     
     # --- Make out document methods
+    
     def make_description(self):
-        author = self.descr.has_key('author') and self.descr['author'] or ''
-        title = self.descr.has_key('title') and self.descr['title'] or ''
+        author = 'author' in self.descr and self.descr['author'] or ''
+        title = 'title' in self.descr and self.descr['title'] or ''
         if not author and '.' in title :
             point = title.index('.')
             author = title[:point].strip()
@@ -1167,7 +1181,7 @@ class MyHTMLParser(SGMLParser):
               '</first-name><middle-name>%s' \
               '</middle-name><last-name>%s</last-name></author>'\
               '<book-title>%s</book-title>' % (first_name, middle_name, last_name, title)
-        if self.descr.has_key('annot'):
+        if 'annot' in self.descr:
             retv+='<annotation>%s</annotation>' % self.descr['annot']
         retv+='</title-info><document-info><author><nickname></nickname></author>'\
                '<date value="%s">%s</date>'\
@@ -1199,6 +1213,7 @@ class MyHTMLParser(SGMLParser):
             
 
     # --- Auxiliary  methods
+    
     def tag_repr(self, tag, attrs, single=False):
         ''' Start tag representation '''
         closer=single and '/' or ''
@@ -1257,6 +1272,7 @@ class MyHTMLParser(SGMLParser):
             data=base64.encodestring(data)
         return mime_type, data
 
+
 def usage():
     print '''
 HTML to FictionBook converter, ver. %s
@@ -1282,8 +1298,10 @@ where options is:
     --not-detect-notes       Not detect notes
 ''' % version
 
+
 def convert_to_fb(opts):
-    import locale, getopt
+    import locale
+    import getopt
     locale.setlocale(locale.LC_ALL, '')
     try:
         sys_encoding = locale.nl_langinfo(locale.CODESET)
@@ -1418,4 +1436,3 @@ if __name__=='__main__':
         sys.stderr.write('Python 2.3 or newer it is necessary for start of the program.\n')
     else:
         convert_to_fb(sys.argv[1:])
-
