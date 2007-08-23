@@ -5,7 +5,7 @@
 HTML to FictionBook2 converter.
 
 Usage: %prog [options] args
-    -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.*) Input file name
+    -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.zip|*.*) Input file name
     -o, --output-file=FILENAME: (*.fb2|*.*) Output file name
     -f, --encoding-from=ENCODING_NAME:  Source encoding, autodetect if omitted.
     -t, --encoding-to=ENCODING_NAME DEFAULT=us-ascii:    Encoding to use in final fb2 book.
@@ -19,6 +19,15 @@ import sys
 
 import optionparse
 import h2fb
+try:
+    #raise ImportError
+    import compressedfile
+    myfile_open = compressedfile.open_zipfile
+except ImportError:
+    myfile_open = open
+
+
+
 
 def main(argv=None):
     if argv is None:
@@ -55,8 +64,8 @@ def main(argv=None):
     
     # start actually processing the file now
     
-    in_file = open(in_filename, 'rb')
-    out_file = open(out_filename, 'w')
+    in_file = myfile_open(in_filename, 'rb')
+    out_file = myfile_open(out_filename, 'w')
     
     params['data'] = in_file.read()
     in_file.close()
