@@ -53,9 +53,12 @@ Chris TODO
     *   href bug if --not-convert-quotes  is not issued, get ">>" in href!!
     *   -i bug not working properly if file does not exist (uses stdin)
     *   -o bug not working properly if file is in use, get no error/exception displayed and instead got to stdout
-        * TODO check pytho coding stlye/guid for open() versus file()
-        * process() open() has except withou type, should have type and not ignore everything
+        * TODO check python coding style/guide for open() versus file() -- http://mail.python.org/pipermail/python-dev/2004-July/045928.html
+        * pep8 where appropriate
+        * pychecker/pylint
+        * process() open() has except without type, should have type and not ignore everything
         * convert_to_fb() out_file=file() also has except without type, should have type and not ignore everything
+        * convert2png has try/except with no restrictions, errors are lost.
     * stuff before first header is book description: on/off
     * remove SGMLParser? replace with Beautiful Soup http://www.crummy.com/software/BeautifulSoup/
     * chardet suport - http://chardet.feedparser.org/
@@ -331,6 +334,9 @@ class MyHTMLParser(SGMLParser):
         self.params=params
         if 'informer' in params:
             self.informer=params['informer']
+        if params['convert-images'] != 0 and convert2png is None:
+            raise(RuntimeError, 'convert to png requested but no image libraries are available')
+            
         secs = time.time()
         self.msg('HTML to FictionBook converter, ver. %s\n' % version)
         self.msg("Reading data...\n")
@@ -345,14 +351,6 @@ class MyHTMLParser(SGMLParser):
             self.header_re = params['header-re'].strip() and re.compile(params['header-re'])
         except:
             self.header_re = None
-        if not data:
-            try:
-                f = open(params['file-name']) ##FIXME TODO binary mode open!
-            except:
-                self.msg("Get data from stdin",2)
-                f = sys.stdin
-        data=f.read()
-        f.close()
         if not data:
             return ''
         self.msg('Preprocessing...\n')
@@ -1308,9 +1306,10 @@ def convert_to_fb(opts):
     except AttributeError:
         sys_encoding = "Windows-1251"
         
+    in_file=sys.stdin
     out_file=sys.stdout
     params={
-        'file-name'         : '',       # File name
+        'file-name'         : '',       # File name, even if not reading from file this should be passed in to aid in href detection
         'data'              : '',       # Data for processing
         'encoding-from'     : '',       # Source data encoding
         'encoding-to'       : 'Windows-1251',       # Result data encoding
@@ -1328,7 +1327,7 @@ def convert_to_fb(opts):
         'detect-verses'     : 1,        # Detect verses
         'detect-notes'      : 1,        # Detect notes ([note here] or {note here})
         'verbose'           : 1,        # Verbose level
-        'convert-images'    : 1,        # Convert images to png or no.
+        'convert-images'    : 1,        # Force convert of images to png or not
         }
 
     params['sys-encoding'] = sys_encoding
@@ -1383,11 +1382,9 @@ def convert_to_fb(opts):
     for opt, val in opts:
         if opt in ('-i','--input-file'):
             params['file-name']=val
+            in_file = open(params['file-name'], 'rb')
         elif opt in ('-o','--output-file'):
-            try:
-                out_file=file(val,'w')
-            except:
-                pass
+            out_file = open(val, 'w')
         elif opt in ('-f','--encoding-from'):
             params['encoding-from']=val
         elif opt in ('-t','--encoding-to'):
@@ -1425,7 +1422,9 @@ def convert_to_fb(opts):
             params['convert-hyphen']=0
         elif opt in ('-v','--verbose',):
             params['verbose']=int(val)
-                
+        
+    params['data'] = in_file.read()
+    in_file.close()
     data=MyHTMLParser().process(params)
     out_file.write(data)
     out_file.close()
