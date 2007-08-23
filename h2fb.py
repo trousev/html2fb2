@@ -74,7 +74,7 @@ import base64
 import time
 import mimetypes
 import urllib
-
+import locale
 
 try:
     #raise ImportError
@@ -1297,47 +1297,53 @@ where options is:
 ''' % version
 
 
+# FIXME TODO, the try block is broken
+locale.setlocale(locale.LC_ALL, '')
+try:
+    sys_encoding = locale.nl_langinfo(locale.CODESET)
+except AttributeError:
+    sys_encoding = "Windows-1251"
+
+default_params = {
+    'file-name'         : '',       # Input HTML file name, even if not reading from an on-disk file, this should be passed in to aid in href detection
+    'data'              : '',       # Data for processing
+    'encoding-from'     : '',       # Source data encoding
+    'encoding-to'       : 'Windows-1251',       # Result data encoding
+    'convert-quotes'    : 1,        # Convert "" to << >>
+    'convert-hyphen'    : 1,        # Convert - to ndash
+    'header-re'         : '',       # regexp for detecting section headers
+    'skip-images'       : 0,        # Ignore images (not include it to result)
+    'skip-ext-links'    : 0,        # Ignore external links
+    'skip-empty-lines'  : 1,        # Not generate <empty-line/> tags
+    'detect-italic'     : 1,        # Detect italc (_italic text here_)
+    'detect-headers'    : 1,        # Detect sections headers
+    'detect-epigraphs'  : 1,        # Detect epigraphs
+    'detect-paragraphs' : 1,        # Detect paragraphs
+    'detect-annot'      : 1,        # Detect annotation
+    'detect-verses'     : 1,        # Detect verses
+    'detect-notes'      : 1,        # Detect notes ([note here] or {note here})
+    'verbose'           : 1,        # Verbose level
+    'convert-images'    : 1,        # Force convert of images to png or not
+    'sys-encoding': sys_encoding,
+    'informer': sys.stderr.write,
+    }
+
+
 def convert_to_fb(opts):
-    import locale
     import getopt
-    locale.setlocale(locale.LC_ALL, '')
-    try:
-        sys_encoding = locale.nl_langinfo(locale.CODESET)
-    except AttributeError:
-        sys_encoding = "Windows-1251"
         
     in_file=sys.stdin
     out_file=sys.stdout
-    params={
-        'file-name'         : '',       # File name, even if not reading from file this should be passed in to aid in href detection
-        'data'              : '',       # Data for processing
-        'encoding-from'     : '',       # Source data encoding
-        'encoding-to'       : 'Windows-1251',       # Result data encoding
-        'convert-quotes'    : 1,        # Convert "" to << >>
-        'convert-hyphen'    : 1,        # Convert - to ndash
-        'header-re'         : '',       # regexp for detecting section headers
-        'skip-images'       : 0,        # Ignore images (not include it to result)
-        'skip-ext-links'    : 0,        # Ignore external links
-        'skip-empty-lines'  : 1,        # Not generate <empty-line/> tags
-        'detect-italic'     : 1,        # Detect italc (_italic text here_)
-        'detect-headers'    : 1,        # Detect sections headers
-        'detect-epigraphs'  : 1,        # Detect epigraphs
-        'detect-paragraphs' : 1,        # Detect paragraphs
-        'detect-annot'      : 1,        # Detect annotation
-        'detect-verses'     : 1,        # Detect verses
-        'detect-notes'      : 1,        # Detect notes ([note here] or {note here})
-        'verbose'           : 1,        # Verbose level
-        'convert-images'    : 1,        # Force convert of images to png or not
-        }
+    params = default_params.copy()
 
-    params['sys-encoding'] = sys_encoding
-    params['informer'] = sys.stderr.write
-    
     if have_optparse:
         argv = sys.argv
         opt, args = optionparse.parse(__doc__, argv[1:])
+        
         # 2 phase dictionary construction
         opt_dict={}
+        # convert underscores to hypens,
+        # e.g. "option_something" in to "option-something" (which h2fb expects)
         for temp_param in dir(opt):
             temp_value = getattr(opt, temp_param)
             if not temp_param.startswith('_') and not callable(temp_value):
