@@ -346,6 +346,7 @@ class MyHTMLParser(SGMLParser):
         #self.msg('process:'+unicode(params['file-name'], params['sys-encoding']))
         ##self.href_re = re.compile(".*?%s#(.*)" % unicode(params['file-name'], params['sys-encoding']))
         self.href_re = re.compile(".*?%s#(.*)" % unicode(os.path.basename(params['file-name']), params['sys-encoding']))
+        self.source_directoryname = unicode(os.path.dirname(params['file-name']), params['sys-encoding'])
         ##
         try:
             self.header_re = params['header-re'].strip() and re.compile(params['header-re'])
@@ -1258,13 +1259,14 @@ class MyHTMLParser(SGMLParser):
 
     def convert_image(self, filename):
         mime_type=mimetypes.guess_type(filename)[0]
+        image_filename = os.path.join(self.source_directoryname, filename)
         ## note if mime_type is None, unable to determine type....
         if not self.params['convert-images']:
-            f=open(filename, 'rb')
+            f=open(image_filename, 'rb')
             data = f.read()
             f.close()
         else:
-            data = convert2png(filename)
+            data = convert2png(image_filename)
             mime_type='image/png'
         if data:
             data=base64.encodestring(data)
