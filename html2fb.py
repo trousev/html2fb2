@@ -6,7 +6,7 @@ HTML to FictionBook2 converter.
 
 Usage: %prog [options] args
     -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.zip|*.*) Input file name
-    -o, --output-file=FILENAME: (*.fb2|*.*) Output file name
+    -o, --output-file=FILENAME: (*.fb2|*.*) Output file name, if left blank creates name based on input filename
     -f, --encoding-from=ENCODING_NAME:  Source encoding, autodetect if omitted.
     -t, --encoding-to=ENCODING_NAME DEFAULT=us-ascii:    Encoding to use in final fb2 book.
     --convert-quotes:     Convert quotes, i.e. convert "" to << >>
@@ -14,6 +14,7 @@ Usage: %prog [options] args
     --skip-images:        Skip images, i.e. if specified do NOT include images.
     --convert-images:     Always convert images to PNG
 """
+
 
 import sys
 
@@ -52,16 +53,20 @@ def main(argv=None):
             opt_dict[temp_key] = temp_value
     
     in_filename = opt_dict['input-file']
-    out_filename = opt_dict['output-file']
-    
     del opt_dict['input-file']
+    out_filename = opt_dict['output-file']
     del opt_dict['output-file']
+    if not out_filename:
+        out_filename = in_filename + '_' + opt_dict['encoding-to'] + '.fb2' ## dumb but quick
+    
     params['file-name'] = in_filename
     # Simply overwrite dictionary
     for temp_param in opt_dict:
         params[temp_param] = opt_dict[temp_param]
     
-    
+    print 'Input file:', in_filename 
+    print 'Output file:', out_filename
+
     # start actually processing the file now
     
     in_file = myfile_open(in_filename, 'rb')
