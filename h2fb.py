@@ -315,18 +315,16 @@ class MyHTMLParser(SGMLParser):
         self.informer=None              # informer (for out messages)
         
     def handle_charref(self, name):
-        """Handle character reference, no need to override."""
-        # copied from Python 2.3 SGMLParser class
-        # to fix nbsp ascii decode error
+        """Handle decimal escaped character reference, does not handle hex.
+        E.g. &#x201c;Quoted.&#x201d; Fred&#x2019;s car."""
+        # Modified version of Python 2.3 SGMLParser class
+        # to fix &nbsp;, etc. (named escape) ascii decode error
+        # as well as &#8220;, etc. (decimal escape) ascii decode error
         try:
             n = int(name)
         except ValueError:
             self.unknown_charref(name)
             return
-        if not 0 <= n <= 255:
-            self.unknown_charref(name)
-            return
-        #self.handle_data(chr(n)) #Original python 2.3 line
         self.handle_data(unichr(n))
     
     def process(self, params):
@@ -583,7 +581,8 @@ class MyHTMLParser(SGMLParser):
     def unknown_charref(self, ref):
         ''' Handle unknown char refs '''
         # FIX: Don't know, how to handle it
-        self.msg('Unknown char ref %s\n' % ref, 1)
+        self.msg('Unknown/invalid char ref %s is being ignored\n' % ref)
+        raise(Warning, 'Unknown char ref %s is being ignored\n' % ref)
         
     def unknown_entityref(self, ref):
         ''' Handle unknown entity refs '''
@@ -673,7 +672,10 @@ class MyHTMLParser(SGMLParser):
             else:
                 self.process_data()
                 if self.out[-1]=="<%s>" % v:
+                    ## duplicate tag detected, often from replacing embedded <p> inside <a>...</a>
+                    ## FIXME not really sure if this is 100% appropriate, is this ONLY for missing target links?
                     self.msg("!!!!\n")
+                    self.msg('DEBUG** ' + repr(v) + ' --- ' + repr(self.out[-10:])  + ' ' + repr(v), 1)
                     self.out.pop()
                 else:
                     self.out.append("</%s>" % v)

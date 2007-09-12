@@ -3,6 +3,7 @@
 
 """
 HTML to FictionBook2 converter.
+NOTE Options/defaults are different to h2fb.
 
 Usage: %prog [options] args
     -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.zip|*.*) Input file name
@@ -63,6 +64,9 @@ def main(argv=None):
     # Simply overwrite dictionary
     for temp_param in opt_dict:
         params[temp_param] = opt_dict[temp_param]
+    
+    params['detect-verses'] = 0 ## DEBUG, workaround for bug in detect-verses code (line length??), detect-verses makes NO sense for html input files, only makes sense for raw text files (h2fb can handle plain text files)
+    params['skip-empty-lines'] = 0
     
     print 'Input file:', in_filename 
     print 'Output file:', out_filename

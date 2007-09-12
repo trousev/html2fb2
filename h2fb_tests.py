@@ -8,15 +8,16 @@ import unittest
 import h2fb
 
 
-## TODO need a way to ignore autho VERION in for when it changes
-## need to test <empty-line/>, and add support for it in to h2fb!
+## TODO add test for <p> inside <a> tages as hrefs/xlinks do NOT seem to work
 
 in_filename = 'in_memory.html'
 test_params = h2fb.default_params.copy()
 test_params['file-name'] = in_filename
 test_params['verbose'] = 0
 test_params['convert-images'] = 0
+test_params['encoding-to'] = 'us-ascii'
 
+#print 'test_params', test_params
 
 def word_list_from_markup(in_str):
     compile_obj = re.compile(r"""(?is)<.*?>""")
@@ -89,6 +90,122 @@ line number four, blank line above.
         self.assertTextContentEqual(in_data, extract_body_from_markup(data))
         self.assertTextContentEqual(expected_result, extract_body_from_markup(data))
         
+    def test_escaped_data_1(self):
+        """test_escaped_data_1: check if &#...... works
+        """
+        local_test_params = test_params.copy()
+        local_test_params['detect-verses'] = 1
+        local_test_params['skip-empty-lines'] = 0
+        in_data = '''<html>
+    <body>
+ 
+        <p>&#8220;Quoted.&#8221; Fred&#8217;s car.</p>
+ 
+    </body>
+</html>
+'''
+        in_data = '''<html>
+    <body>
+    
+        <h2>decimal escape 1 (under (255)</h2>
+        <p>
+        extravagant d&#233;cor (hex 0x00e9)
+        </p>
+        
+        <h2>named escape</h2>
+        <p>&ldquo;Quoted.&rdquo; Fred&rsquo;s car.</p>
+        
+        <h2>decimal escape 2 (over 255)</h2>
+        <p>&#8220;Quoted.&#8221; Fred&#8217;s car.</p>
+ 
+    </body>
+</html>
+'''
+
+        expected_result = """<body><section>
+<title>
+<p>
+decimal escape 1 (under (255)
+</p>
+</title>
+<empty-line/>
+<p>
+extravagant d&#233;cor (hex 0x00e9)
+</p>
+</section>
+<section>
+<title>
+<p>
+named escape
+</p>
+</title>
+<empty-line/>
+<p>
+&#8220;Quoted.&#8221; Fred&#8217;s car.
+</p>
+</section>
+<section>
+<title>
+<p>
+decimal escape 2 (over 255)
+</p>
+</title>
+<empty-line/>
+<p>
+&#8220;Quoted.&#8221; Fred&#8217;s car.
+</p></section></body>
+        """
+        local_test_params['data'] = in_data
+        data=h2fb.MyHTMLParser().process(local_test_params)
+        #print data
+        self.assertTextContentEqual(expected_result, extract_body_from_markup(data))
+        
+        
+    def test_escaped_data_2(self):
+        """test_escaped_data_2: check if &#x...... works, currently FAILS :-(
+        """
+        local_test_params = test_params.copy()
+        local_test_params['detect-verses'] = 1
+        local_test_params['skip-empty-lines'] = 0
+        in_data = '''<html>
+    <body>
+    
+         <h2>hex escape</h2>
+         
+        <p>
+        extravagant d&#x00e9;cor
+        </p>
+        
+        <p>&#x201c;Quoted.&#x201d; Fred&#x2019;s car.</p>
+ 
+ <h2>information</h2>
+ <br>
+ <br>
+ LEFT DOUBLE QUOTATION MARK
+ decimal: &#8220;
+ http://www.eki.ee/letter/chardata.cgi?ucode=201c
+ 
+ 
+ RIGHT DOUBLE QUOTATION MARK
+ decimal: &#8221;
+ http://www.eki.ee/letter/chardata.cgi?ucode=201d
+
+RIGHT SINGLE QUOTATION MARK
+decimal: &#8217;
+http://www.eki.ee/letter/chardata.cgi?ucode=2019
+
+ 
+    </body>
+</html>
+'''
+
+        expected_result = """not written yet as h2fb does not yet support hex escaped literals
+        """
+        local_test_params['data'] = in_data
+        data=h2fb.MyHTMLParser().process(local_test_params)
+        #print data
+        self.assertTextContentEqual(expected_result, extract_body_from_markup(data))
+        
     def test_blank_lines_with_p(self):
         """test_blank_lines_with_p: check if <empty-line/> is ever used
         """
@@ -134,6 +251,38 @@ paragraph number four, blank line above.
         data=h2fb.MyHTMLParser().process(local_test_params)
         #print data
         self.assertTrue('<empty-line' in data)
+        self.assertTextContentEqual(in_data, extract_body_from_markup(data))
+        self.assertTextContentEqual(expected_result, extract_body_from_markup(data))
+
+        
+    def test_avoid_duplicate_tags(self):
+        """test_avoid_duplicate_tags: check handle embedded <p> inside <a>...</a>
+        """
+        local_test_params = test_params.copy()
+        local_test_params['detect-verses'] = 1
+        local_test_params['skip-empty-lines'] = 0
+        in_data = '''<html>
+    <body>
+        <a href="#someref1">
+        <p>One line of text</p>
+        </a>
+
+        <a href="#someref2">
+        <p>Another line of text</p>
+        </a>
+    </body>
+</html>
+'''
+        expected_result = """<body><section><p>
+One line of text
+</p>
+<p>
+Another line of text
+</p></section></body>
+        """
+        local_test_params['data'] = in_data
+        data=h2fb.MyHTMLParser().process(local_test_params)
+        #print data
         self.assertTextContentEqual(in_data, extract_body_from_markup(data))
         self.assertTextContentEqual(expected_result, extract_body_from_markup(data))
 
