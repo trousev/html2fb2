@@ -10,6 +10,7 @@ Usage: %prog [options] args
     -o, --output-file=FILENAME: (*.fb2|*.*) Output file name, if left blank creates name based on input filename
     -f, --encoding-from=ENCODING_NAME:  Source encoding, autodetect if omitted.
     -t, --encoding-to=ENCODING_NAME DEFAULT=us-ascii:    Encoding to use in final fb2 book.
+    --convert_span_to=CHOICE(em|strong|remove) DEFAULT=em: What to convert html <span> tags to
     --convert-quotes:     Convert quotes, i.e. convert "" to << >>
     --convert-hyphen:     Convert hyphens, i.e. - to ndash
     --skip-images:        Skip images, i.e. if specified do NOT include images.
@@ -22,7 +23,7 @@ import sys
 import optionparse
 import h2fb
 try:
-    #raise ImportError
+    raise ImportError
     import compressedfile
     myfile_open = compressedfile.open_zipfile
 except ImportError:

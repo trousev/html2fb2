@@ -51,10 +51,10 @@ Chris TODO
     * test multi document html input
     * test href properly
     *   href bug if --not-convert-quotes  is not issued, get ">>" in href!!
-    *   -i bug not working properly if file does not exist (uses stdin)
-    *   -o bug not working properly if file is in use, get no error/exception displayed and instead got to stdout
+    *   -i bug not working properly if file does not exist (uses stdin) - Low priority as file logic removed from class, html2fb does NOT suffer from this
+    *   -o bug not working properly if file is in use, get no error/exception displayed and instead got to stdout - Low priority as file logic removed from class, html2fb does NOT suffer from this
         * TODO check python coding style/guide for open() versus file() -- http://mail.python.org/pipermail/python-dev/2004-July/045928.html
-        * pep8 where appropriate
+        * pep8 where appropriate (note use 120 cols not 80)
         * pychecker/pylint
         * process() open() has except without type, should have type and not ignore everything
         * convert_to_fb() out_file=file() also has except without type, should have type and not ignore everything
@@ -330,10 +330,18 @@ class MyHTMLParser(SGMLParser):
     def process(self, params):
         '''Main processing method. Process all data '''
         self.params=params
+        self._TAGS = _TAGS
         if 'informer' in params:
             self.informer=params['informer']
         if params['convert-images'] != 0 and convert2png is None:
             raise(RuntimeError, 'convert to png requested but no image libraries are available')
+            
+        if self.params['convert-span-to'] == 'emphasis' or self.params['convert-span-to'] == 'em':
+            self.params['convert-span-to'] == 'em'
+        elif self.params['convert-span-to'] != 'strong':
+            self.params['convert-span-to'] = None
+        if self.params['convert-span-to'] is not None:
+            self._TAGS['span'] = self._TAGS[self.params['convert-span-to']]
             
         secs = time.time()
         self.msg('HTML to FictionBook converter, ver. %s\n' % version)
@@ -380,7 +388,7 @@ class MyHTMLParser(SGMLParser):
         '''
         Handle unknown start ttag
         '''
-        if tag in _TAGS or self.skip:
+        if tag in self._TAGS or self.skip:
             self.handle_starttag(tag, None, attrs)
         else:
             self.handle_data(self.tag_repr(tag, attrs))
@@ -389,7 +397,7 @@ class MyHTMLParser(SGMLParser):
         '''
         Handle unknown end ttag
         '''
-        if tag in _TAGS or self.skip:
+        if tag in self._TAGS or self.skip:
             self.handle_endtag(tag, None)
         else:
             self.handle_data("</%s>" % tag)
@@ -409,7 +417,7 @@ class MyHTMLParser(SGMLParser):
         Handle all start tags
         '''
         try:
-            flag = _TAGS[tag]
+            flag = self._TAGS[tag]
         except:
             flag = 0
         if self.skip and not flag & _TAG_NOTSKIP:
@@ -442,7 +450,7 @@ class MyHTMLParser(SGMLParser):
         Handle all end tags
         '''
         try:
-            flag = _TAGS[tag]
+            flag = self._TAGS[tag]
         except:
             flag = 0
         if self.skip and self.skip == tag:
@@ -630,7 +638,7 @@ class MyHTMLParser(SGMLParser):
     def mark_start_tag(self, tag, attrs=None):
         ''' Remember open tag and put it to output '''
         try:
-            flag = _TAGS[tag]
+            flag = self._TAGS[tag]
         except:
             flag = 0
         if tag in self.nstack[0]:
@@ -655,7 +663,7 @@ class MyHTMLParser(SGMLParser):
             v = self.nstack[0].pop()
             a = self.nstack[1].pop()
             try:
-                flag = _TAGS[v]
+                flag = self._TAGS[v]
             except:
                 flag = 0
             if flag & _TAG_INP:
@@ -764,7 +772,7 @@ class MyHTMLParser(SGMLParser):
                     self.out[i-1]=self.out[i]=self.out[i+1]='' # remove empty paragraph
             elif id:
                 try:
-                    if _TAGS[self.out[i][1:-1]] & _TAG_ID:
+                    if self._TAGS[self.out[i][1:-1]] & _TAG_ID:
                         self.out[i] = '<%s id="%s">' % (self.out[i][1:-1],id)
                         id = ''
                 except KeyError:
@@ -1330,6 +1338,7 @@ default_params = {
     'convert-images'    : 1,        # Force convert of images to png or not
     'sys-encoding': sys_encoding,
     'informer': sys.stderr.write,
+    'convert-span-to': None, # what to convert span tags to, if set to 'em' or 'emphasis' converts spans to 'emphasis', if 'strong' converts to 'strong', anything else is ignored/skipped/removed (silently)
     }
 
 

@@ -16,6 +16,7 @@ test_params['file-name'] = in_filename
 test_params['verbose'] = 0
 test_params['convert-images'] = 0
 test_params['encoding-to'] = 'us-ascii'
+test_params['convert-span-to'] = 'em' # not sure if this should be global set or on per test basis...
 
 #print 'test_params', test_params
 
@@ -46,8 +47,8 @@ class TestH2FB(unittest.TestCase):
         self.assertEqual(str1_list, str2_list)
     #def setUp(self):
 
-    def test_blank_lines_br_only(self):
-        """test_blank_lines_br_only: check if <empty-line/> is ever used
+    def test_span_replacement(self):
+        """test_span_replacement: check if <span> tags are highlighted
         """
         local_test_params = test_params.copy()
         local_test_params['detect-verses'] = 1
@@ -59,34 +60,20 @@ class TestH2FB(unittest.TestCase):
  http-equiv="content-type">
 </head>
 <body>
-line number one.<br>
-line number two.<br>
-line number three.<br>
-<br>
-line number four, blank line above.<br>
+I'm <span>not</span> happy about this <span class="bold">arrangment</span><br>
 </body>
 </html>
 
 '''
         expected_result = """
 <body><section><p>
-line number one.
+I'm <emphasis>not</emphasis> happy about this <emphasis>arrangment</emphasis>
 </p>
-<p>
-line number two.
-</p>
-<p>
-line number three.
-</p>
-<empty-line/>
-<p>
-line number four, blank line above.
-</p></section></body>
-        """
+</section></body>
+"""
         local_test_params['data'] = in_data
         data=h2fb.MyHTMLParser().process(local_test_params)
         #print data
-        self.assertTrue('<empty-line' in data)
         self.assertTextContentEqual(in_data, extract_body_from_markup(data))
         self.assertTextContentEqual(expected_result, extract_body_from_markup(data))
         
