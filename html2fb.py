@@ -6,7 +6,7 @@ HTML to FictionBook2 converter.
 NOTE Options/defaults are different to h2fb.
 
 Usage: %prog [options] args
-    -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.zip|*.*) Input file name
+    -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.rtf|*.zip|*.*) Input file name
     -o, --output-file=FILENAME: (*.fb2|*.*) Output file name, if left blank creates name based on input filename
     -f, --encoding-from=ENCODING_NAME:  Source encoding, autodetect if omitted.
     -t, --encoding-to=ENCODING_NAME DEFAULT=us-ascii:    Encoding to use in final fb2 book.
@@ -77,7 +77,13 @@ def main(argv=None):
     in_file = myfile_open(in_filename, 'rb')
     out_file = myfile_open(out_filename, 'w')
     
-    params['data'] = in_file.read()
+    input_text = in_file.read()
+    if input_text.startswith('{\\rtf'):
+        # Looks like we have RTF data not html!
+        import rtf.Rtf2Html
+        input_text = rtf.Rtf2Html.getHtml(input_text)
+    
+    params['data'] = input_text
     in_file.close()
     data=h2fb.MyHTMLParser().process(params)
     out_file.write(data)
