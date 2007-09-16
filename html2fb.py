@@ -23,7 +23,7 @@ import sys
 import optionparse
 import h2fb
 try:
-    raise ImportError
+    #raise ImportError
     import compressedfile
     myfile_open = compressedfile.open_zipfile
 except ImportError:
