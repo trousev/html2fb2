@@ -2,6 +2,7 @@
 # vim:ts=4:sw=4:softtabstop=4:smarttab:expandtab
 
 import sys
+import string
 import re
 import unittest
 
@@ -33,8 +34,70 @@ def extract_body_from_markup(in_str):
     match_obj = compile_obj.search(in_str)
     bodycontents = match_obj.group('bodycontents')
     return bodycontents
+
+##################
+def dumb_html_diff(html_str1, html_str2):
+    ## TODO consider changing white space handling- right now this is the original version
+    def html2list(x, b=0):
+        ## html2list from http://www.aaronsw.com/2002/diff/
+        mode = 'char'
+        cur = ''
+        out = []
+        for c in x:
+            if mode == 'tag':
+                if c == '>': 
+                    if b: cur += ']'
+                    else: cur += c
+                    out.append(cur); cur = ''; mode = 'char'
+                else: cur += c
+            elif mode == 'char':
+                if c == '<': 
+                    out.append(cur)
+                    if b: cur = '['
+                    else: cur = c
+                    mode = 'tag'
+                elif c in string.whitespace: out.append(cur+c); cur = ''
+                else: cur += c
+        out.append(cur)
+        return filter(lambda x: x is not '', out)
+
+    def remove_duplicate_white_space(in_list):
+        temp_list = []
+        last_was_white_space=False
+        for x in in_list:
+            if x.isspace():
+                if last_was_white_space:
+                    continue
+                else:
+                    temp_list.append(x)
+                    last_was_white_space=True
+            else:
+                temp_list.append(x)
+                last_was_white_space=False
+        return temp_list
+
+    def remove_all_white_space(in_list):
+        """This is so simple, should really use filter() for performance"""
+        temp_list = []
+        for x in in_list:
+            if x.isspace():
+                continue
+            else:
+                temp_list.append(x)
+        return temp_list
     
-class TestH2FB(unittest.TestCase):
+    l1 = html2list(html_str1)
+    l2 = html2list(html_str2)
+
+    l1 = remove_all_white_space(l1)
+    l2 = remove_all_white_space(l2)
+        
+    return l1 == l2
+
+#########################################################
+
+class TestH2FBUtil(unittest.TestCase):
+    
     def assertTextContentEqual(self, str1, str2):
         """simple/dumb remove markup and compare 2 strings ignoring whitespace
         """
@@ -46,6 +109,15 @@ class TestH2FB(unittest.TestCase):
         #str2_list=compile_obj.subn('', str2)[0].replace('<', ' <').replace('>', '> ').split()
         self.assertEqual(str1_list, str2_list)
     #def setUp(self):
+
+    def assertMLContentEqual(self, str1, str2):
+        """simple/dumb compare 2 strings containing ML (xml or html)
+        does not handle complx cases such as "<some_tab />"
+        """
+        dummy_var = dumb_html_diff(str1, str2)
+        self.assertEqual(dummy_var, True)
+
+class TestH2FB(TestH2FBUtil):
 
     def test_span_replacement(self):
         """test_span_replacement: check if <span> tags are highlighted
@@ -239,7 +311,103 @@ paragraph number four, blank line above.
         #print data
         self.assertTrue('<empty-line' in data)
         self.assertTextContentEqual(in_data, extract_body_from_markup(data))
-        self.assertTextContentEqual(expected_result, extract_body_from_markup(data))
+        self.assertTextContentEqual(expected_result, extract_body_from_markup(data))        
+        
+    def test_nested_emphasis_bold_simple(self):
+        """test_nested_emphasis: check if <b><b>this is bold</b></b> is handled (i.e. reduced into one tag)
+        TODO <b><b>this is bold</b> as is this</b>
+        """
+        local_test_params = test_params.copy()
+        in_data = '''<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Strict//EN">
+<html>
+<head>
+  <meta content="text/html; charset=ISO-8859-1"
+ http-equiv="content-type">
+</head>
+<body>
+<p>
+<b><b>this is bold</b></b>
+</p>
+</body>
+</html>
+
+'''
+        expected_result = """
+<section><p>
+<strong>this is bold</strong>
+</p></section>        
+        """
+        local_test_params['data'] = in_data
+        data=h2fb.MyHTMLParser().process(local_test_params)
+        #print data
+        #print '-'*65
+        #print extract_body_from_markup(data)
+        self.assertTextContentEqual(in_data, extract_body_from_markup(data))
+        self.assertMLContentEqual(expected_result, extract_body_from_markup(data))
+
+    def test_nested_emphasis_italic_simple(self):
+        """test_nested_emphasis: check if <i><i>this is italic</i></i> is handled (i.e. reduced into one tag)
+        TODO <i><i>this is italic</i> as is this</i>
+        """
+        local_test_params = test_params.copy()
+        in_data = '''<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Strict//EN">
+<html>
+<head>
+  <meta content="text/html; charset=ISO-8859-1"
+ http-equiv="content-type">
+</head>
+<body>
+<p>
+<i><i>this is italic</i></i>
+</p>
+</body>
+</html>
+
+'''
+        expected_result = """
+<section><p>
+<emphasis>this is italic</emphasis>
+</p></section>        
+        """
+        local_test_params['data'] = in_data
+        data=h2fb.MyHTMLParser().process(local_test_params)
+        #print data
+        #print '-'*65
+        #print extract_body_from_markup(data)
+        self.assertTextContentEqual(in_data, extract_body_from_markup(data))
+        self.assertMLContentEqual(expected_result, extract_body_from_markup(data))
+
+    def test_nested_emphasis_italic_lesssimple(self):
+        """test_nested_emphasis: check if <i><i>this is italic</i> as is this</i> is handled (i.e. reduced into one tag)
+        """
+        local_test_params = test_params.copy()
+        in_data = '''<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Strict//EN">
+<html>
+<head>
+  <meta content="text/html; charset=ISO-8859-1"
+ http-equiv="content-type">
+</head>
+<body>
+<p>two italic nested tags
+<i><i>this is italic</i> as is this</i>
+</p>
+</body>
+</html>
+
+'''
+        expected_result = """
+<section><p>
+two italic nested tags
+<emphasis>this is italic as is this</emphasis>
+</p></section>        
+        """
+        local_test_params['data'] = in_data
+        data=h2fb.MyHTMLParser().process(local_test_params)
+        #print data
+        #print '-'*65
+        #print extract_body_from_markup(data)
+        self.assertTextContentEqual(in_data, extract_body_from_markup(data))
+        self.assertMLContentEqual(expected_result, extract_body_from_markup(data))
 
         
     def test_avoid_duplicate_tags(self):
