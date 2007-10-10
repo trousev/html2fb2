@@ -400,7 +400,7 @@ paragraph number four, blank line above.
 two italic nested tags
 <emphasis>this is italic as is this</emphasis>
 </p></section>        
-        """
+        """ ## matches webbrowser behaviour of Firefox and IE
         local_test_params['data'] = in_data
         data=h2fb.MyHTMLParser().process(local_test_params)
         #print data
