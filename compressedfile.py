@@ -7,6 +7,26 @@ for performance for the intermediate files so there are no temporary
 on-disk files). It does not support file objects as input. This is
 next on the TODO list.
 
+TODO add support for .name attribute:
+
+From http://docs.python.org/lib/bltin-file-objects.html
+    
+    If the file object was created using open(), the name of the file. Otherwise, some string that 
+    indicates the source of the file object, of the form "<...>". This is a read-only attribute and 
+    may not be present on all file-like objects.
+
+cStringIO can NOT be used to create attributes, e.g.:
+
+    import cStringIO as StringIO
+    file_ptr = StringIO.StringIO('hello')
+    file_ptr.name = 'pants'
+    
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in <module>
+    AttributeError: 'cStringIO.StringI' object has no attribute 'name'
+
+But StringIO can be! Probably should wrap around instead.
+
 TODO consider support of different compress and archive formats:
     .Z
     .gz

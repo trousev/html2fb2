@@ -6,7 +6,7 @@ HTML to FictionBook2 converter.
 NOTE Options/defaults are different to h2fb.
 
 Usage: %prog [options] args
-    -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.rtf|*.zip|*.*) Input file name
+    -i, --input-file=FILENAME: (*.html|*.htm|*.html|*.rtf|*.zip|*.*) REQUIRED Input file name
     -o, --output-file=FILENAME: (*.fb2|*.*) Output file name, if left blank creates name based on input filename
     -f, --encoding-from=ENCODING_NAME:  Source encoding, autodetect if omitted.
     -t, --encoding-to=ENCODING_NAME DEFAULT=us-ascii:    Encoding to use in final fb2 book.
@@ -15,21 +15,23 @@ Usage: %prog [options] args
     --convert-hyphen:     Convert hyphens, i.e. - to ndash
     --skip-images:        Skip images, i.e. if specified do NOT include images.
     --convert-images:     Always convert images to PNG
+    --no_centered_to_headers: (RTF input Only) Do not convert centered text into (html)headers/(FB)titles. By default RTF centered text is converted into headers/titles
+    --no_zip_output:    Do not create compressed ebook. By default output files are put in a zip file (to save space)
 """
 
+import cgitb
+cgitb.enable(format="text") 
 
 import sys
 
 import optionparse
+#import weboptionparse as optionparse
 import h2fb
 try:
     #raise ImportError
     import compressedfile
-    myfile_open = compressedfile.open_zipfile
 except ImportError:
-    myfile_open = open
-
-
+    compressedfile=None
 
 
 def main(argv=None):
@@ -40,6 +42,11 @@ def main(argv=None):
 
     params = h2fb.default_params.copy()
     
+    # Process command line options only used by this module
+    rtf_centered_to_headers = opt.no_centered_to_headers != True
+    del opt.no_centered_to_headers
+    no_zip_output = opt.no_zip_output == True
+    del opt.no_zip_output
     
     # Convert out command line options into something h2fb can handle
     
@@ -72,16 +79,54 @@ def main(argv=None):
     print 'Input file:', in_filename 
     print 'Output file:', out_filename
 
+    if compressedfile is None:
+        myfile_open = open
+    else:
+        myfile_open = compressedfile.open_zipfile
+    if compressedfile is None or no_zip_output:
+        myfile_open_for_write = open
+    else:
+        myfile_open_for_write = compressedfile.open_zipfile
+
     # start actually processing the file now
     
     in_file = myfile_open(in_filename, 'rb')
-    out_file = myfile_open(out_filename, 'w')
+    out_file = myfile_open_for_write(out_filename, 'w')
     
     input_text = in_file.read()
     if input_text.startswith('{\\rtf'):
         # Looks like we have RTF data not html!
         import rtf.Rtf2Html
+        #### START temp rtf workaround until Rtf2Html suports e?dash and optional hyphen
+        ## See bug http://sourceforge.net/tracker/index.php?func=detail&aid=1811128&group_id=103452&atid=634851
+        ## older rtf spec http://latex2rtf.sourceforge.net/RTF-Spec-1.0.txt
+        
+        # Newline removal ends up without any empty paragraphs (i.e. empty-line tags in FB2)
+        # Fits in with what the input RTF file looks like so I think this is the RIGHT thing to do until RTF lib is fixed.
+        # Also fixes missing bold tags in _some_ cases....
+        input_text = input_text.replace('\r\n','') # remove newlines...
+        input_text = input_text.replace('\n','') # remove newlines...
+        ## TODO remove MAC newlines.....??
+        for x in ['\emdash', '\\endash']:
+            input_text = input_text.replace(x+' ','-')
+            input_text = input_text.replace(x,'-')
+        input_text = input_text.replace('\\-\n','') # remove, could replace...
+        input_text = input_text.replace('\\-\r\n','') # remove, could replace...
+        input_text = input_text.replace('\\-','') # remove, could replace...
+        #### END temp rtf workaround until Rtf2Html suports e?dash and optional hyphen
         input_text = rtf.Rtf2Html.getHtml(input_text)
+        ## TODO add Centered (or bold) tags as headers?
+        if rtf_centered_to_headers:
+            ## FIXME use beautiful soup (http://www.crummy.com/software/BeautifulSoup/) to find, '<div align='center'>' and convert to H2
+            input_text = input_text.replace("<div align='center'>",'<h2>')
+            input_text = input_text.replace('</div>','</h2>')
+            
+    ## TODO add beautiful soup (http://www.crummy.com/software/BeautifulSoup/) clean html before convert support? Possibly put that into h2fb? may help with bad nested bold tags (see unittest, test_nested_emphasis_italic_lesssimple)
+    ## TODO add PDF support??
+    ## .lit suport via python 2.4 subprocess (http://docs.python.org/lib/node529.html) and http://www.convertlit.com/
+    ## TODO add Table Of Contents generation - if using a decent reader like Haalireader this is not needed.
+    ## TODO zip'd support of html archives that contain images
+    ## BUGFIX filenames in zip's - needed to ensure internal href's are translated correctly, especially for ./thisfile.html#link_name style href's
     
     params['data'] = input_text
     in_file.close()
