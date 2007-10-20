@@ -68,7 +68,7 @@ def find_main_lit_file(directory_name):
     directory_name = os.path.abspath(directory_name)
     
     ### Dumb Brute Force find index.html (or derivatives)
-    ## want case insensitive glob....
+    ## want case insensitive (recursive) glob....
     ##index_filename = os.path.join(directory_name, '.html
     ##os.path.exists()
     main_filename = None
@@ -81,13 +81,9 @@ def find_main_lit_file(directory_name):
     if main_filename is None:
         # Find largest html file
         file_list = find_files_with_extension(directory_name, ['.htm', '.html'] )
+        ## get the filename of the largest size file
         file_list.sort()
-        ## get the filename of the last (largest size) entry
-        """
-        file_list.reverse() # yeah I know this is bad... but works with pre-Python 2.4
-        main_filename = file_list[0][1] ## FIXME just get file_list[-1][1]  and loose the reverse above
-        """
-        main_filename = file_list[-1][1]
+        main_filename = file_list[-1][1] ## get the filename of the last  entry
     return main_filename
     
 
@@ -101,19 +97,19 @@ def ExtractLIT(in_filename, out_dirname=None, clit_exe=None):
     if clit_exe is None:
         clit_exe=CLIT_EXE
     if not os.path.exists(clit_exe):
-        raise ConvertLITError('Missing ConvertLIT exe %r, download from http://www.convertlit.com'% clit_exe)
+        raise ConvertLITError('Missing ConvertLIT exe %r, download latest version from http://www.convertlit.com'% clit_exe)
 
     out_dirname = os.path.abspath(out_dirname)
     out_dirname = os.path.join(out_dirname, '') # add trailing slash to out_dirname  to prevent clit from crashing...
 
-    print 'ExtractLIT: in_filename', repr(in_filename )
-    print 'ExtractLIT: out_dirname', repr(out_dirname)
+    #print 'ExtractLIT: in_filename', repr(in_filename )
+    #print 'ExtractLIT: out_dirname', repr(out_dirname)
 
     del_dir(out_dirname)
     #safe_mkdir(out_dirname) ###  not needed for Windows, is needed for Linux??
     ## what about ConvertLIT stdio and stderr...?
     retcode = subprocess.call([clit_exe, in_filename, out_dirname])
-    print 'ExtractLIT: retcode', retcode
+    #print 'ExtractLIT: retcode', retcode
 
     if retcode != 0:
         raise ConvertLITError('subprocess call failed! retcode=%d'% retcode)
@@ -145,6 +141,7 @@ bad_values = """
 """
 <st1*> -- i.e. wildcarded
 """
+## DONE in aggresive experimental replace below
 
 
 bad_values_list = []
@@ -241,13 +238,14 @@ def remove_unknown_tags(in_str, remove_tag_list):
     return_str = in_str
     done_tags = []
     for tag_count, tag_name in remove_tag_list:
-        ## FIXME do a pass for tags with colons in them (remove after and including colon)
+        ## do a pass for tags with colons in them (remove after and including colon and use that to replace with instead)
         if ':' in tag_name:
             tag_name = tag_name[:tag_name.find(':')]
             if tag_name in done_tags:
                 continue
             done_tags.append(tag_name)
-        temp_re = """</?%s.*?>""" % re.escape(tag_name)
+        #temp_re = """</?%s.*?>""" % re.escape(tag_name)  #FIXME if tag_name = 'o' then tags such as "open" etc. are matched!! or 'su' (or 's') would match 'sub' and 'sup'
+        temp_re = r"""</?%s(?!\w)[:\s]?.*?>""" % re.escape(tag_name)
         #print temp_re
         temp_compile_obj = re.compile(temp_re,  re.IGNORECASE| re.DOTALL)
         return_str = temp_compile_obj.sub('', return_str)
