@@ -122,6 +122,7 @@ def main(argv=None):
     in_file = myfile_open(in_filename, 'rb')
     out_file = myfile_open_for_write(out_filename, 'w')
     
+    ## TODO .LFR format via https://libprs500.kovidgoyal.net/browser/trunk/src/libprs500/ebooks/lrf/parser.py
     input_text = in_file.read()
     if isLIT:
         # .lit (html) input stream clean up
