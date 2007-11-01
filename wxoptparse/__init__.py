@@ -111,7 +111,7 @@ class MainWindow(wx.Frame):
         self.ctrlOptions = []
         id = -1
         
-        title = "wxOptParse"
+        title = os.path.splitext(os.path.basename(self.progname))[0]
         
         wx.Frame.__init__(self, 
             None,
