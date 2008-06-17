@@ -44,6 +44,7 @@ or worse, the script will not work as expected.
 """
 
 import re, sys
+import os
 
 from optparse import OptionParser as regular_OptionParser
 
@@ -201,6 +202,10 @@ def parse(docstring, arglist=None, exit_on_usage_error=True):
         print IndexError,ValueError ## DEBUG
         raise ## DEBUG
         raise ParsingError("Cannot parse the option string correctly")
+    # TODO MAKE AN IF block, consider moving to top of function!
+    # trim argv[0]
+    sys.argv[0] = os.path.basename(sys.argv[0])
+    # TODO - make argv optional so that can pass in params, if missing then sys.argv it
     return p.parse_args(arglist)
 
 
