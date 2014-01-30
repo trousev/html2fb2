@@ -75,6 +75,7 @@ import time
 import mimetypes
 import urllib
 import locale
+import urllib2
 
 try:
     #raise ImportError
@@ -248,7 +249,7 @@ _TAGS={
 try:
     import wx
     _IMG_LIB='wxPython'
-    
+
     def convert2png(filename):
         if wx.GetApp() is None:
             _app = wx.PySimpleApp()
@@ -262,10 +263,10 @@ try:
             os.unlink(of)
         return retv
 except ImportError:
-    try:    
+    try:
         from PIL import Image
         _IMG_LIB='PIL'
-        
+
         def convert2png(filename):
             retv = ''
             try:
@@ -294,7 +295,7 @@ class MyHTMLParser(SGMLParser):
         entitydefs[name] = unichr(codepoint)
     del name, codepoint, name2codepoint
     entitydefs['nbsp']=u' '
-    
+
     def reset(self):
         SGMLParser.reset(self)
         self.nofill = 1                 # PRE active or not
@@ -313,7 +314,7 @@ class MyHTMLParser(SGMLParser):
         self.descr={}                   # description
         self.bins=[]                    # images (binary objects)
         self.informer=None              # informer (for out messages)
-        
+
     def handle_charref(self, name):
         """Handle decimal escaped character reference, does not handle hex.
         E.g. &#x201c;Quoted.&#x201d; Fred&#x2019;s car."""
@@ -326,7 +327,7 @@ class MyHTMLParser(SGMLParser):
             self.unknown_charref(name)
             return
         self.handle_data(unichr(n))
-    
+
     def process(self, params):
         '''Main processing method. Process all data '''
         self.params=params
@@ -342,7 +343,7 @@ class MyHTMLParser(SGMLParser):
             self.params['convert-span-to'] = None
         if self.params['convert-span-to'] is not None:
             self._TAGS['span'] = self._TAGS[self.params['convert-span-to']]
-            
+
         secs = time.time()
         self.msg('HTML to FictionBook converter, ver. %s\n' % version)
         self.msg("Reading data...\n")
@@ -381,9 +382,9 @@ class MyHTMLParser(SGMLParser):
                     self.make_bins() + '</FictionBook>'
         self.msg("Total process time is %.2f secs\n" % (time.time() - secs))
         return self.out
-        
+
     # --- Tag handling, need for parsing
-    
+
     def unknown_starttag(self, tag, attrs):
         '''
         Handle unknown start ttag
@@ -411,7 +412,7 @@ class MyHTMLParser(SGMLParser):
             self.save += data
         else:
             self.data += data
- 
+
     def handle_starttag(self, tag, method, attrs):
         '''
         Handle all start tags
@@ -478,7 +479,7 @@ class MyHTMLParser(SGMLParser):
     def end_title(self):
         ''' End saving document title '''
         self.descr['title'] = ' '.join(self.stop_saving().split()).strip()
-        
+
     def do_meta(self, attrs):
         '''
         Handle meta tags - try get document author
@@ -497,33 +498,33 @@ class MyHTMLParser(SGMLParser):
         '''Handle tag P'''
         self.end_paragraph()
         self.mark_start_tag('p')
-        
+
     def start_pre(self, attrs):
         ''' Handle tag PRE '''
         self.nofill = self.nofill + 1
         self.do_p(None)
-        
+
     def end_pre(self):
         ''' Handle tag /PRE '''
         self.end_paragraph()
         self.nofill = max(0, self.nofill - 1)
-        
+
     def start_em(self, attrs):
         ''' Handle tag EM '''
         self.mark_start_tag('emphasis')
-        
+
     def end_em(self):
         ''' Handle tag /EM '''
         self.mark_end_tag('emphasis')
-        
+
     def start_strong(self, attrs):
         ''' Handle tag STRONG '''
         self.mark_start_tag('strong')
-        
+
     def end_strong(self):
         ''' Handle tag /STRONG '''
         self.mark_end_tag('strong')
-        
+
     def start_a(self, attrs):
         ''' Handle tag A '''
         for attrname, value in attrs:
@@ -547,7 +548,7 @@ class MyHTMLParser(SGMLParser):
                     self.ids[value][0]+=1
                 except:
                     self.ids[value]=[1,0]
-                    
+
     def end_a(self):
         ''' Handle tag /A '''
         self.mark_end_tag('a')
@@ -558,7 +559,7 @@ class MyHTMLParser(SGMLParser):
         self.out.extend(['</section>','<section>','<title>'])
         self.mark_start_tag('p')
         self.oldnofill, self.nofill = self.nofill, 0
-        
+
     def end_h1(self):
         ''' Handle tag /H1-/H6 '''
         self.end_paragraph()
@@ -585,20 +586,20 @@ class MyHTMLParser(SGMLParser):
     def report_unbalanced(self, tag):
         ''' Handle unbalansed close tags'''
         self.handle_data('</%s>\n' % tag)
-        
+
     def unknown_charref(self, ref):
         ''' Handle unknown char refs '''
         # FIX: Don't know, how to handle it
         self.msg('Unknown/invalid char ref %s is being ignored\n' % ref)
         raise(Warning, 'Unknown char ref %s is being ignored\n' % ref)
-        
+
     def unknown_entityref(self, ref):
         ''' Handle unknown entity refs '''
         # FIX: Don't know, how to handle it
         self.msg('Unknown entity ref %s\n' % ref, 1)
 
     # --- Methods for support parsing
-    
+
     def start_saving(self):
         ''' Not out data to out but save it '''
         self.saving = True
@@ -608,7 +609,7 @@ class MyHTMLParser(SGMLParser):
         ''' Stop data saving '''
         self.saving = False
         return self.save
-    
+
     def end_paragraph(self):
         '''
         Finalise paragraph
@@ -634,7 +635,7 @@ class MyHTMLParser(SGMLParser):
                 self.nstack[1][0:0]=[None]
                 self.out.append('<p>')
             self.mark_end_tag('p')
-            
+
     def mark_start_tag(self, tag, attrs=None):
         ''' Remember open tag and put it to output '''
         try:
@@ -649,7 +650,7 @@ class MyHTMLParser(SGMLParser):
             self.data += self.tag_repr(tag, attrs)
         else:
             self.out.append(self.tag_repr(tag, attrs))
-            
+
     def mark_end_tag(self, tag):
         '''
         Close corresponding tags. If tag is not last tag was outed,
@@ -658,7 +659,7 @@ class MyHTMLParser(SGMLParser):
         '''
         if tag not in self.nstack[0]:
             return
-            
+
         while self.nstack[0]:
             v = self.nstack[0].pop()
             a = self.nstack[1].pop()
@@ -711,9 +712,9 @@ class MyHTMLParser(SGMLParser):
                 pass
             self.out.extend(self.data)
         self.data = ''
-        
+
     # --- Parsed data processing methods
-    
+
     def pre_process(self, data):
         '''
         Processing data before parsing.
@@ -834,9 +835,9 @@ class MyHTMLParser(SGMLParser):
                 pstart = i+2
             else:
                 istitle = (
-                    empty0 and 
-                    not empty1 and 
-                    empty2 and 
+                    empty0 and
+                    not empty1 and
+                    empty2 and
                     (
                         empty3 or
                         data[i+1].startswith(' '*8) or
@@ -865,7 +866,7 @@ class MyHTMLParser(SGMLParser):
         if pstart < len(data):
             res.append(data[pstart:])
         return res
-    
+
     def detect_epigraphs(self):
         '''
         Detect epigraphs (in plain text)
@@ -1003,13 +1004,13 @@ class MyHTMLParser(SGMLParser):
                     except:
                         pass
                     try:
-                        if res[-1] == '</poem>' and self.out[i+1] == '</p>': 
+                        if res[-1] == '</poem>' and self.out[i+1] == '</p>':
                             iend += 1
                     except:
                         pass
                     self.out[istart:iend]=res
             i+=1
-            
+
     def detect_paragraphs(self):
         '''
         Detect paragraphs in plain text
@@ -1052,7 +1053,7 @@ class MyHTMLParser(SGMLParser):
                 else:
                     self.out[i]='\n'.join(raw).lstrip()
             i+=1
-            
+
     def detect_italic(self, text, arg):
         signs='_.,!?:'
         istart=-1
@@ -1112,7 +1113,7 @@ class MyHTMLParser(SGMLParser):
             if type(self.asline) == TupleType:
                 self.asline=(count, G80, L80)
         return data
-    
+
     def process_paragraph(self, paragraph, id):
         '''
         Process paragraph. Find id, normalize quotes.
@@ -1147,7 +1148,7 @@ class MyHTMLParser(SGMLParser):
         if self.params['detect-italic']:
             paragraph = self.process_nontags(paragraph, self.detect_italic, None)
         paragraph = ' '.join(paragraph.split()) # Remove extra whitespaces
-        
+
         return [id, paragraph]
 
     def process_nontags(self, text, func, arg):
@@ -1172,9 +1173,9 @@ class MyHTMLParser(SGMLParser):
                 res+=text[ss:i+1]
                 ss=i+1
         return res
-    
+
     # --- Make out document methods
-    
+
     def make_description(self):
         author = 'author' in self.descr and self.descr['author'] or ''
         title = 'title' in self.descr and self.descr['title'] or ''
@@ -1203,14 +1204,14 @@ class MyHTMLParser(SGMLParser):
                 oct(int(time.time())),
                 version)
         return retv
-    
+
     def make_notes(self):
         if not self.notes:
             return ''
         retv=['<section id="FictionBookId%s"><title><p>note %s</p></title>%s</section>' %
               (x,x,y) for x,y in self.notes]
         return '<body name="notes"><title><p>Notes</p></title>'+''.join(retv)+'</body>'
-       
+
     def make_bins(self):
         if not self.bins:
             return ''
@@ -1218,11 +1219,11 @@ class MyHTMLParser(SGMLParser):
         #(x.encode(self.params['encoding-to'],'xmlcharrefreplace'),y) for x,y in self.bins])
         return ''.join(['<binary content-type="%s" id="%s">%s</binary>' % \
                         (mime_type, x,y) for mime_type, x,y in self.bins])
-            
-            
+
+
 
     # --- Auxiliary  methods
-    
+
     def tag_repr(self, tag, attrs, single=False):
         ''' Start tag representation '''
         closer=single and '/' or ''
@@ -1230,11 +1231,11 @@ class MyHTMLParser(SGMLParser):
             return "<%s %s%s>" % (tag, ' '.join(['%s="%s"' % x for x in attrs if x[1] is not None]),closer)
         else:
             return "<%s%s>" % (tag, closer)
-    
+
     def clean_str(self, intext):
         ''' Remove simple tags from line. '''
         return _RE_TAG.sub('',intext)
-    
+
     def is_roman_number(self, instr):
         '''
         Detect - is instr is roman number
@@ -1243,11 +1244,11 @@ class MyHTMLParser(SGMLParser):
         if len(instr)>8:
             return False
         return bool(_RE_ROMAN.match(instr))
-    
+
     def msg(self, msg, level=0):
         if self.informer and self.params['verbose'] > level:
             self.informer(msg)
-        
+
     def make_id(self, id):
         '''
         Make properly link id
@@ -1272,9 +1273,13 @@ class MyHTMLParser(SGMLParser):
         image_filename = os.path.join(self.source_directoryname, filename)
         ## note if mime_type is None, unable to determine type....
         if not self.params['convert-images']:
-            f=open(image_filename, 'rb')
-            data = f.read()
-            f.close()
+            if "http://" in image_filename or "https://" in image_filename:
+                f = urllib2.urlopen(image_filename)
+                data = f.read()
+            else:
+                f=open(image_filename, 'rb')
+                data = f.read()
+                f.close()
         else:
             data = convert2png(image_filename)
             mime_type='image/png'
@@ -1344,7 +1349,7 @@ default_params = {
 
 def convert_to_fb(opts):
     import getopt
-        
+
     in_file=sys.stdin
     out_file=sys.stdout
     params = default_params.copy()
@@ -1352,7 +1357,7 @@ def convert_to_fb(opts):
     if have_optparse:
         argv = sys.argv
         opt, args = optionparse.parse(__doc__, argv[1:])
-        
+
         # 2 phase dictionary construction
         opt_dict={}
         # convert underscores to hypens,
