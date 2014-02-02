@@ -109,11 +109,11 @@ _RE_ROMAN      = re.compile('^m?m?m?(c[md]|d?c{0,3})(x[lc]|l?x{0,3})(i[xv]|v?i{0
 _RE_EL         = re.compile('<empty-line/>\s*(</section>)')
 # Flags
 _TAG_SKIP     = 0x0001
+_TAG_STARTP   = 0x0002
 _TAG_STRONG   = 0x0004
 _TAG_EM       = 0x0008
 _TAG_NOTSKIP  = 0x0010
 _TAG_ENDP     = 0x0020
-_TAG_STARTP   = 0x0002
 _TAG_PRE      = 0x0040
 _TAG_HEADER   = 0x0080
 _TAG_INP      = 0x0100
@@ -314,6 +314,7 @@ class MyHTMLParser(SGMLParser):
         self.descr={}                   # description
         self.bins=[]                    # images (binary objects)
         self.informer=None              # informer (for out messages)
+        self.header_stack = []          # tags stack. For example: ['h1','h3','h4'] means: "I am in section under h1, then h3, then h4 header"
 
     def handle_charref(self, name):
         """Handle decimal escaped character reference, does not handle hex.
@@ -417,6 +418,8 @@ class MyHTMLParser(SGMLParser):
         '''
         Handle all start tags
         '''
+        # TODO: make this without 'singletone'
+        self.header_tag = tag
         try:
             flag = self._TAGS[tag]
         except:
@@ -450,6 +453,8 @@ class MyHTMLParser(SGMLParser):
         '''
         Handle all end tags
         '''
+        # TODO: make this without 'singletone'
+        self.header_tag = tag
         try:
             flag = self._TAGS[tag]
         except:
@@ -553,19 +558,79 @@ class MyHTMLParser(SGMLParser):
         ''' Handle tag /A '''
         self.mark_end_tag('a')
 
-    def start_h1(self, attrs):
-        ''' Handle tag H1-H6 '''
+
+    def open_section(self):
         self.end_paragraph()
-        self.out.extend(['</section>','<section>','<title>'])
+        self.out.extend(['<section>'])
         self.mark_start_tag('p')
         self.oldnofill, self.nofill = self.nofill, 0
 
-    def end_h1(self):
-        ''' Handle tag /H1-/H6 '''
+    def close_section(self):
+        self.end_paragraph()
+        self.out.append('</section>')
+        self.nofill = self.oldnofill
+        self.mark_start_tag('p')
+
+    def open_title(self):
+        self.end_paragraph()
+        self.out.extend(['<title>'])
+        self.mark_start_tag('p')
+        self.oldnofill, self.nofill = self.nofill, 0
+
+    def close_title(self):
         self.end_paragraph()
         self.out.append('</title>')
         self.nofill = self.oldnofill
         self.mark_start_tag('p')
+
+
+
+    def start_h1(self, attrs):
+        ''' Handle tag H1-H6 '''
+        #self.end_paragraph()
+        #self.out.extend(['</section>','<section>','<title>'])
+        #self.mark_start_tag('p')
+        #self.oldnofill, self.nofill = self.nofill, 0
+
+        level = int(self.header_tag.replace("h",""))
+        if len(self.header_stack) == 0:
+            self.open_section()
+            self.open_title()
+            self.header_stack.append(level)
+        elif self.header_stack[-1] == level:
+            self.close_section()
+            self.open_section()
+            self.open_title()
+        elif self.header_stack[-1] < level:
+            self.open_section()
+            self.open_title()
+            self.header_stack.append(level)
+        else:
+            while True:
+                if len(self.header_stack) == 0: break
+                if self.header_stack[-1] < level: break
+                self.close_section()
+                self.header_stack.pop()
+            self.open_section()
+            self.open_title()
+            self.header_stack.append(level)
+
+
+
+
+
+        # self.close_section()
+        # self.open_section()
+        # self.open_title()
+
+    def end_h1(self):
+        ''' Handle tag /H1-/H6 '''
+        #self.end_paragraph()
+        #self.out.append('</title>')
+        #self.nofill = self.oldnofill
+        #self.mark_start_tag('p')
+        self.close_title()
+        #self.close_section()
 
     def do_img(self, attrs):
         ''' Handle images '''
@@ -791,15 +856,19 @@ class MyHTMLParser(SGMLParser):
         for i in [x for x in self.ids.keys() if not self.ids[x][0] and self.ids[x][1]>=0]:
             self.out=re.sub("%s(.*?)%s" % (self.tag_repr('a',[('xlink:href','#'+i)]),'</a>') ,r'\1',self.out)
         sect=self.out.find('<section')
+        close_level=len(self.header_stack)
+        close_level = close_level + 1 #This is made for strange heuristics below
         if 0 < sect < len(self.out)/3 and self.params['detect-annot']:
             self.descr['annot'] = ' '.join(self.out[:sect].rstrip().rstrip('</section>').split())
             self.out=self.out[sect:]
         else:
             if self.out.startswith('</section>'):
                 self.out=self.out[len('</section>'):]
+            elif self.out.startswith("<section>"):
+                close_level = close_level - 1
             else:
                 self.out='<section>'+self.out
-        self.out+='</section>'
+        for i in range(close_level) : self.out+='</section>'
         self.out=_RE_EL.sub(r'\1',self.out)
 
     def detect_headers(self, data):
