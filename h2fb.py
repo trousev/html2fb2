@@ -76,7 +76,8 @@ import mimetypes
 import urllib
 import locale
 import urllib2
-
+from wget import Wget
+import md5
 try:
     #raise ImportError
     import optionparse
@@ -122,6 +123,7 @@ _TAG_ID       = 0x0200
 _TAGS={
     'a'           : _TAG_INP,
     'abbr'        : 0,
+    'article'     : 0,
     'acronym'     : 0,
     'address'     : 0,
     'align'       : 0,
@@ -159,6 +161,7 @@ _TAGS={
     'form'        : _TAG_SKIP,
     'frame'       : 0,
     'frameset'    : 0,
+    'h0'          : _TAG_HEADER,
     'h1'          : _TAG_HEADER,
     'h2'          : _TAG_HEADER,
     'h3'          : _TAG_HEADER,
@@ -380,7 +383,7 @@ class MyHTMLParser(SGMLParser):
                    (self.make_description() + \
                     '<body>%s</body>' % self.out + \
                     self.make_notes()).encode(self.params['encoding-to'],'xmlcharrefreplace') + \
-                    self.make_bins() + '</FictionBook>'
+                    self.make_bins().encode(self.params['encoding-to'],'xmlcharrefreplace')+ '</FictionBook>'
         self.msg("Total process time is %.2f secs\n" % (time.time() - secs))
         return self.out
 
@@ -545,6 +548,7 @@ class MyHTMLParser(SGMLParser):
                     value="#"+value
                 if self.params['skip-ext-links'] and not res:
                     return
+                value = value.replace("&","&amp;")
                 self.mark_start_tag('a', [('xlink:href',value)])
             if attrname == 'name':
                 value = self.make_id(value)
@@ -640,7 +644,10 @@ class MyHTMLParser(SGMLParser):
         for attrname, value in attrs:
             if attrname == 'src':
                 src = value
+        sh = md5.new()
+        sh.update(src)
         temp_image_filename=urllib.unquote(src)
+        src = sh.hexdigest() + ".png"
         mime_type, data = self.convert_image(temp_image_filename)#src.encode(self.params['sys-encoding']))
         if data:
             self.end_paragraph()
@@ -1343,8 +1350,10 @@ class MyHTMLParser(SGMLParser):
         ## note if mime_type is None, unable to determine type....
         if not self.params['convert-images']:
             if "http://" in image_filename or "https://" in image_filename:
-                f = urllib2.urlopen(image_filename)
-                data = f.read()
+                # f = urllib2.urlopen(image_filename)
+                # data = f.read()
+                print ("Downloading image:" + image_filename)
+                data = Wget.get(image_filename)
             else:
                 f=open(image_filename, 'rb')
                 data = f.read()
@@ -1407,7 +1416,7 @@ default_params = {
     'detect-paragraphs' : 1,        # Detect paragraphs
     'detect-annot'      : 1,        # Detect annotation
     'detect-verses'     : 1,        # Detect verses
-    'detect-notes'      : 1,        # Detect notes ([note here] or {note here})
+    'detect-notes'      : 0,        # Detect notes ([note here] or {note here})
     'verbose'           : 1,        # Verbose level
     'convert-images'    : 1,        # Force convert of images to png or not
     'sys-encoding': sys_encoding,
